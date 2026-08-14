@@ -103,7 +103,8 @@ PHASE 6 local validation at this status update:
 - signal contract/compiler regression and strategy prefix-invariance tests: PASS during development;
 - synthetic 104-experiment integration: PASS, decision `INCONCLUSIVE`, TEST `SEALED`;
 - LIVE fail-closed and local secret-pattern review: PASS;
-- Docker Compose/image/runtime and Gitleaks: pending GitHub Actions validation;
+- Docker Compose, `phase-6` image, 104-experiment runtime, LIVE block and Gitleaks: PASS in
+  GitHub Actions run `31780239898`;
 - credentials, private API fields, paper/live execution added: NO (correct);
 - real-market edge claimed: NO (correct);
 - PHASE 7 started: NO (correct).
