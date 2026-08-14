@@ -1,6 +1,6 @@
 # VPS Deployment
 
-Status: PHASE 5 data, offline-backtest, experiment-evidence and benchmark baseline.
+Status: PHASE 6 data, offline research evidence, controls and candidate-family smoke.
 
 Target: Linux VPS with Git, Docker Engine and the Docker Compose plugin.
 
@@ -44,9 +44,9 @@ after the first build on a Docker-enabled host and pinned before any paper-tradi
 Verify the offline engine twice; both JSON documents must be identical:
 
 ```bash
-docker run --rm --network none ai-trading-lab:phase-5 \
+docker run --rm --network none ai-trading-lab:phase-6 \
   python -m ai_trading_lab backtest self-test
-docker run --rm --network none ai-trading-lab:phase-5 \
+docker run --rm --network none ai-trading-lab:phase-6 \
   python -m ai_trading_lab backtest self-test
 ```
 
@@ -62,6 +62,14 @@ Verify and persist the four frozen benchmark controls, including 100 Random Entr
 ```bash
 docker compose --profile experiments run --rm experiments \
   python -m ai_trading_lab benchmark self-test --root /artifacts/phase-5-smoke
+```
+
+Verify the first candidate-family integration. This uses synthetic data, records 104 experiments,
+keeps TEST sealed and must remain `INCONCLUSIVE`:
+
+```bash
+docker compose --profile experiments run --rm experiments \
+  python -m ai_trading_lab strategy self-test --root /artifacts/phase-6-smoke
 ```
 
 The `research-artifacts` volume contains SQLite registry state, backtest JSON, metrics, trades and

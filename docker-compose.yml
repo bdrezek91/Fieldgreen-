@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ai-trading-lab:phase-5
+    image: ai-trading-lab:phase-6
     environment:
       ATL_MODE: RESEARCH
       ATL_LOG_LEVEL: INFO
@@ -26,7 +26,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ai-trading-lab:phase-5
+    image: ai-trading-lab:phase-6
     profiles: [data]
     command: ["python", "-m", "ai_trading_lab", "status"]
     environment:
@@ -51,7 +51,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ai-trading-lab:phase-5
+    image: ai-trading-lab:phase-6
     profiles: [experiments]
     command: ["python", "-m", "ai_trading_lab", "status"]
     environment:

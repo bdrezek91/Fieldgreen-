@@ -46,11 +46,11 @@ jobs:
       - uses: actions/checkout@v6
       - run: docker compose config --quiet
       - run: docker compose build
-      - name: Verify PHASE 5 runtime, evidence and benchmark distribution
+      - name: Verify PHASE 6 runtime, controls and candidate-family guardrails
         run: |
-          first="$(docker run --rm --network none ai-trading-lab:phase-5 \
+          first="$(docker run --rm --network none ai-trading-lab:phase-6 \
             python -m ai_trading_lab backtest self-test)"
-          second="$(docker run --rm --network none ai-trading-lab:phase-5 \
+          second="$(docker run --rm --network none ai-trading-lab:phase-6 \
             python -m ai_trading_lab backtest self-test)"
           test "$first" = "$second"
           echo "$first" | grep '"status": "PASS"'
@@ -63,10 +63,16 @@ jobs:
           echo "$benchmark" | grep '"experiments_recorded": 103'
           echo "$benchmark" | grep '"runs": 100'
           echo "$benchmark" | grep '"verdict": "INCONCLUSIVE"'
+          strategy="$(docker compose --profile experiments run --rm experiments \
+            python -m ai_trading_lab strategy self-test --root /artifacts/ci-phase-6)"
+          echo "$strategy" | grep '"experiments_recorded": 104'
+          echo "$strategy" | grep '"random_entry_runs": 100'
+          echo "$strategy" | grep '"family_decision": "INCONCLUSIVE"'
+          echo "$strategy" | grep '"test_window": "SEALED"'
       - name: Prove LIVE fails closed in the image
         run: |
           if docker run --rm --network none -e ATL_MODE=LIVE \
-            ai-trading-lab:phase-5 python -m ai_trading_lab status; then
+            ai-trading-lab:phase-6 python -m ai_trading_lab status; then
             echo "LIVE mode unexpectedly started"
             exit 1
           fi

@@ -20,6 +20,7 @@ from ai_trading_lab.data.pipeline import DataIngestionService, IngestionResult
 from ai_trading_lab.data.storage import DataLake
 from ai_trading_lab.experiments.scenarios import experiment_smoke_payload
 from ai_trading_lab.settings import Settings
+from ai_trading_lab.strategies.scenarios import strategy_smoke_payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -58,6 +59,12 @@ def build_parser() -> argparse.ArgumentParser:
         "self-test", help="run and record the offline synthetic benchmark suite"
     )
     benchmark_smoke.add_argument("--root", help="artifact root; defaults to a temporary directory")
+    strategy = subparsers.add_parser("strategy", help="run frozen PHASE 6 family utilities")
+    strategy_commands = strategy.add_subparsers(dest="strategy_command", required=True)
+    strategy_smoke = strategy_commands.add_parser(
+        "self-test", help="run and record the synthetic candidate-family smoke test"
+    )
+    strategy_smoke.add_argument("--root", help="artifact root; defaults to a temporary directory")
     return parser
 
 
@@ -65,7 +72,7 @@ def status_payload(settings: Settings) -> dict[str, object]:
     """Build the public health/status payload."""
     return {
         "service": "ai-trading-lab",
-        "phase": 5,
+        "phase": 6,
         "status": "healthy",
         **settings.public_status(),
     }
@@ -122,6 +129,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     _print_payload(benchmark_smoke_payload(Path(directory)))
             return 0
         raise AssertionError(f"Unhandled benchmark command: {args.benchmark_command}")
+    if args.command == "strategy":
+        if args.strategy_command == "self-test":
+            if args.root:
+                _print_payload(strategy_smoke_payload(Path(args.root)))
+            else:
+                with tempfile.TemporaryDirectory(prefix="atl-phase-6-") as directory:
+                    _print_payload(strategy_smoke_payload(Path(directory)))
+            return 0
+        raise AssertionError(f"Unhandled strategy command: {args.strategy_command}")
     if args.command == "data":
         lake = DataLake(settings.data_root)
         service = DataIngestionService(BybitV5PublicClient(raw_page_sink=lake.write_raw_page), lake)

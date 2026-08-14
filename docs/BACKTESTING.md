@@ -1,7 +1,7 @@
 # Backtesting
 
-Status: PHASE 5 reference engine and benchmark controls implemented. No candidate alpha strategy
-exists.
+Status: PHASE 6 reference engine, benchmark controls and first candidate-family integration
+implemented. No candidate has demonstrated an edge.
 
 ## Purpose and fidelity
 
@@ -120,6 +120,11 @@ corrections and Monte Carlo belong to later phases. Definitions are frozen in
 PHASE 5 benchmark targets are compiled separately and execute under these same semantics. The
 compiler rejects insufficient next-bar volume rather than accepting unequal partial-fill exposure.
 Exact fixed rules and caveats are in [`BENCHMARKS.md`](BENCHMARKS.md).
+
+PHASE 6 moves the reusable target and compiler boundary into `signals`, so candidate and controls
+receive the same next-bar, sizing and complete-fill treatment. The 55/20 dual-channel candidate
+uses prior closed bars only and is covered by prefix-invariance tests. Its frozen real-evidence
+gate is documented in [`STRATEGY_FAMILY_1.md`](STRATEGY_FAMILY_1.md).
 
 ## Known limitations
 

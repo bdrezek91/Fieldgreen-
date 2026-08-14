@@ -2,10 +2,11 @@
 
 Greenfield, research-first platform for testing whether a systematic trading edge exists.
 
-The project has completed **PHASE 5 — Benchmark Strategies**. It contains the PHASE 2
+The project has completed **PHASE 6 — First Strategy Family**. It contains the PHASE 2
 credential-free Bybit data engine, the PHASE 3 deterministic T1 reference backtester, frozen
-performance metrics, monotonic `EXP-*` evidence and four frozen comparison controls. It has no
-candidate alpha strategy, exchange credentials, paper adapter or live execution path.
+performance metrics, monotonic `EXP-*` evidence, four frozen comparison controls and one
+pre-registered dual-channel trend candidate. It has no validated edge, exchange credentials,
+paper adapter or live execution path.
 
 ## Safety boundary
 
@@ -40,6 +41,7 @@ uv run pip-audit
 uv run atl backtest self-test
 uv run atl experiment self-test
 uv run atl benchmark self-test
+uv run atl strategy self-test
 ```
 
 Public data examples:
@@ -91,3 +93,6 @@ Metric definitions, verdict rules and experiment artifacts are documented in
 
 Frozen PHASE 5 controls, parameters and pre-result comparison rules are documented in
 [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
+
+The first falsifiable strategy-family protocol, sealed chronology and rejection gate are in
+[`docs/STRATEGY_FAMILY_1.md`](docs/STRATEGY_FAMILY_1.md).

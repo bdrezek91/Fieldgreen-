@@ -3,7 +3,8 @@
 The accepted PHASE 0 design is defined in
 [`PHASE_0_ARCHITECTURE_RESEARCH.md`](PHASE_0_ARCHITECTURE_RESEARCH.md). PHASE 3 added the first
 framework-neutral backtesting boundary. PHASE 4 implements canonical analytics and experiment
-evidence. PHASE 5 adds framework-neutral control signals and a separate signal-to-order compiler.
+evidence. PHASE 5 added comparison controls. PHASE 6 promotes their reusable target contract and
+compiler into a framework-neutral `signals` layer and adds the first isolated candidate family.
 
 ```mermaid
 flowchart TD
@@ -16,8 +17,8 @@ flowchart TD
     A --> X["Analytics / experiments"]
 ```
 
-Data, the T1 backtest boundary, control signals, canonical analytics and experiment tracking are
-implemented. Feature research, candidate strategies, the full risk engine and ML remain future
+Data, the T1 backtest boundary, shared signals, one candidate strategy, canonical analytics and
+experiment tracking are implemented. Feature research, the full risk engine and ML remain future
 modules; the diagram describes dependency direction as well as the eventual system.
 
 ## Implemented packages
@@ -36,9 +37,11 @@ modules; the diagram describes dependency direction as well as the eventual syst
 | `backtesting.scenarios` | synthetic non-strategy runtime proof |
 | `analytics.contracts` / `metrics` | closed trades and versioned portfolio statistics |
 | `experiments.contracts` / `store` | monotonic IDs, SQLite lifecycle and immutable evidence |
-| `benchmarks.contracts` / `strategies` | owned targets and four frozen comparison controls |
-| `benchmarks.compiler` | timing, sizing and full-fill gate from targets to order intents |
+| `signals.contracts` / `compiler` | shared target contract and timing/full-fill compilation |
+| `benchmarks.contracts` / `strategies` | fixed sizing and four frozen comparison controls |
 | `benchmarks.runner` / `scenarios` | shared execution, 100-seed distribution and offline proof |
+| `strategies.contracts` / `trend` | frozen family gate and 55/20 dual-channel candidate |
+| `strategies.runner` / `scenarios` | candidate execution/evidence and synthetic integration proof |
 | `serialization` | canonical JSON, hashing and atomic write-once support |
 
 ## Dependency rules

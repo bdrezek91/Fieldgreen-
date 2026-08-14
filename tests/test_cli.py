@@ -11,7 +11,7 @@ from ai_trading_lab.settings import LiveModeBlockedError, Settings
 
 def test_status_payload_is_safe() -> None:
     payload = cli.status_payload(Settings())
-    assert payload["phase"] == 5
+    assert payload["phase"] == 6
     assert payload["status"] == "healthy"
     assert payload["live_trading"] == "BLOCKED"
 
@@ -100,6 +100,30 @@ def test_benchmark_self_test_records_distribution(
     payload = json.loads(capsys.readouterr().out)
     assert payload["experiments_recorded"] == 103
     assert payload["root"] == str(tmp_path)
+
+
+def test_strategy_self_test_records_candidate_and_keeps_test_sealed(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "strategy_smoke_payload",
+        lambda root: {
+            "status": "PASS",
+            "root": str(root),
+            "experiments_recorded": 104,
+            "family_decision": "INCONCLUSIVE",
+            "test_window": "SEALED",
+            "live_trading": "BLOCKED",
+        },
+    )
+    assert cli.main(["strategy", "self-test", "--root", str(tmp_path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["experiments_recorded"] == 104
+    assert payload["family_decision"] == "INCONCLUSIVE"
+    assert payload["test_window"] == "SEALED"
 
 
 def test_unhandled_command_is_defensive(monkeypatch: pytest.MonkeyPatch) -> None:
