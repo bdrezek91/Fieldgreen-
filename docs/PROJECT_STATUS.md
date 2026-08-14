@@ -79,8 +79,8 @@ Proposed PHASE 4 scope:
 
 ## KNOWN ISSUES
 
-- Docker/Podman is unavailable in the local managed runner; GitHub Actions is the authoritative
-  Compose/image/runtime validation path.
+- Docker/Podman is unavailable in the local managed runner. GitHub Actions run `31772317596`
+  successfully validated the Compose config, PHASE 3 image and runtime behavior.
 - The Python and uv image references are version-pinned but not content-digest-pinned.
 - Public Bybit connectivity was blocked by the managed runner gateway in PHASE 2 and remains to be
   proven from GitHub/VPS before backfill.
@@ -125,9 +125,9 @@ PHASE 3 validation at the time of this status update:
 - dependency audit: PASS;
 - YAML parsing for Compose, CI and pre-commit: PASS;
 - LIVE fail-closed tests: PASS;
-- Docker Compose config and PHASE 3 image build: pending final GitHub Actions validation;
-- network-disabled container self-test equality: pending final GitHub Actions validation;
-- Gitleaks: pending final GitHub Actions validation;
+- Docker Compose config and PHASE 3 image build: PASS in GitHub Actions run `31772317596`;
+- network-disabled container self-test equality: PASS in GitHub Actions run `31772317596`;
+- Gitleaks: PASS in GitHub Actions run `31772317596`;
 - local secret-pattern review: PASS;
 - credentials or private API fields added: NO (correct);
 - strategies, features, ML or paper/live execution added: NO (correct);
