@@ -68,9 +68,9 @@ Proposed PHASE 3 scope:
 
 ## KNOWN ISSUES
 
-- Docker/Podman is unavailable in the current local execution environment. The PHASE 2 image,
-  Compose config, persistent volume and one-shot data command require final validation in GitHub
-  Actions after publication.
+- Docker/Podman is unavailable in the current local execution environment. GitHub Actions run
+  `31770857885` successfully validated Compose, the PHASE 2 image build, PyArrow import inside the
+  image and the container-level LIVE block.
 - The Python and uv image references are version-pinned but not content-digest-pinned.
 - A public API smoke test from the local managed runner was blocked by its network gateway, which
   returned a non-JSON response. Mocked official-contract tests pass; connectivity must be proven by
@@ -112,8 +112,12 @@ PHASE 2 validation at the time of this status update:
 - dependency audit: PASS, no known vulnerabilities after replacing vulnerable PyArrow 21.0.0;
 - YAML parsing for Compose, CI and pre-commit: PASS;
 - LIVE fail-closed tests: PASS;
+- Docker Compose config and PHASE 2 image build: PASS in GitHub Actions;
+- container runtime dependency import: PASS in GitHub Actions;
+- Gitleaks: PASS in GitHub Actions;
+- local secret-pattern review: PASS;
 - public Bybit smoke test: NOT RUN TO COMPLETION — managed network gateway returned non-JSON;
-- local Docker build/Compose lifecycle: NOT RUN — runtime unavailable;
+- local Docker build/Compose lifecycle: NOT RUN — runtime unavailable; remote CI equivalent PASS;
 - credentials or private API fields added: NO (correct);
 - strategies/backtester/execution added: NO (correct);
 - PHASE 3 started: NO (correct).
