@@ -10,6 +10,12 @@ from enum import StrEnum
 from ai_trading_lab.data.contracts import Timeframe
 
 STRATEGY_GATE_VERSION = "strategy-family-gate-v1"
+VALIDATION_INITIAL_CASH = Decimal("100000")
+VALIDATION_FIXED_QUANTITIES = (
+    ("BTCUSDT", Decimal("0.1")),
+    ("ETHUSDT", Decimal("1")),
+    ("SOLUSDT", Decimal("10")),
+)
 EXPECTED_VALIDATION_CELLS = frozenset(
     (symbol, timeframe)
     for symbol in ("BTCUSDT", "ETHUSDT", "SOLUSDT")

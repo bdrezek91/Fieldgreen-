@@ -17,8 +17,12 @@ from ai_trading_lab.data.contracts import (
     BYBIT_SETTLE_COIN,
     Candle,
     CandleDownload,
+    FundingDownload,
+    FundingRate,
     Instrument,
     InstrumentDownload,
+    MarkPriceCandle,
+    MarkPriceDownload,
     RawPage,
     Timeframe,
     milliseconds,
@@ -29,6 +33,8 @@ PRODUCTION_BASE_URL: Final = "https://api.bybit.com"
 KLINE_ENDPOINT: Final = "/v5/market/kline"
 INSTRUMENT_ENDPOINT: Final = "/v5/market/instruments-info"
 SERVER_TIME_ENDPOINT: Final = "/v5/market/time"
+FUNDING_ENDPOINT: Final = "/v5/market/funding/history"
+MARK_PRICE_ENDPOINT: Final = "/v5/market/mark-price-kline"
 
 
 class BybitAPIError(RuntimeError):
@@ -65,7 +71,7 @@ class UrlLibPublicTransport:
         query = urllib.parse.urlencode(parameters)
         request = urllib.request.Request(
             f"{self.base_url}{endpoint}?{query}" if query else f"{self.base_url}{endpoint}",
-            headers={"Accept": "application/json", "User-Agent": "ai-trading-lab/0.6.0"},
+            headers={"Accept": "application/json", "User-Agent": "ai-trading-lab/0.6.1"},
             method="GET",
         )
         last_error: Exception | None = None
@@ -227,6 +233,126 @@ class BybitV5PublicClient:
         chronological = tuple(sorted(candles, key=lambda item: item.open_time))
         return CandleDownload(chronological, tuple(pages), server_time)
 
+    def fetch_funding_rates(
+        self,
+        symbol: str,
+        *,
+        start: datetime,
+        end: datetime,
+        limit: int = 200,
+    ) -> FundingDownload:
+        """Backfill settled funding rates in ``[start, end)`` using backward pagination."""
+        start_ms = milliseconds(start)
+        end_ms = milliseconds(end)
+        normalized_symbol = _normalized_symbol(symbol)
+        if start_ms >= end_ms:
+            raise ValueError("start must be earlier than end")
+        if not 1 <= limit <= 200:
+            raise ValueError("funding limit must be between 1 and 200")
+
+        server_time, time_page = self.server_time()
+        pages: list[RawPage] = [time_page]
+        rates: list[FundingRate] = []
+        page_end = end_ms - 1
+        while page_end >= start_ms:
+            parameters: dict[str, str | int] = {
+                "category": BYBIT_CATEGORY,
+                "symbol": normalized_symbol,
+                "startTime": start_ms,
+                "endTime": page_end,
+                "limit": limit,
+            }
+            retrieved_at = self._now()
+            payload = self.transport.get(FUNDING_ENDPOINT, parameters)
+            page = RawPage(FUNDING_ENDPOINT, parameters, payload, retrieved_at)
+            self._preserve(page)
+            result = _result(payload)
+            if result.get("category") not in {None, BYBIT_CATEGORY}:
+                raise BybitAPIError("funding response category does not match linear")
+            pages.append(page)
+            raw_rows = _required_list(result, "list")
+            if not raw_rows:
+                break
+            parsed = tuple(_parse_funding_rate(normalized_symbol, row) for row in raw_rows)
+            rates.extend(
+                item
+                for item in parsed
+                if start_ms <= milliseconds(item.timestamp) < end_ms
+                and item.timestamp <= server_time
+            )
+            oldest_ms = min(milliseconds(item.timestamp) for item in parsed)
+            if oldest_ms <= start_ms:
+                break
+            next_end = oldest_ms - 1
+            if next_end >= page_end:
+                raise BybitAPIError("funding pagination did not advance")
+            page_end = next_end
+        return FundingDownload(
+            tuple(sorted(rates, key=lambda item: item.timestamp)), tuple(pages), server_time
+        )
+
+    def fetch_mark_price_candles(
+        self,
+        symbol: str,
+        timeframe: Timeframe,
+        *,
+        start: datetime,
+        end: datetime,
+        limit: int = 1_000,
+    ) -> MarkPriceDownload:
+        """Backfill closed mark-price bars in ``[start, end)``."""
+        start_ms, end_ms = milliseconds(start), milliseconds(end)
+        normalized_symbol = _normalized_symbol(symbol)
+        if start_ms >= end_ms:
+            raise ValueError("start must be earlier than end")
+        if not 1 <= limit <= 1_000:
+            raise ValueError("limit must be between 1 and 1000")
+        server_time, time_page = self.server_time()
+        pages: list[RawPage] = [time_page]
+        candles: list[MarkPriceCandle] = []
+        page_end = end_ms - 1
+        while page_end >= start_ms:
+            parameters: dict[str, str | int] = {
+                "category": BYBIT_CATEGORY,
+                "symbol": normalized_symbol,
+                "interval": timeframe.bybit_code,
+                "start": start_ms,
+                "end": page_end,
+                "limit": limit,
+            }
+            retrieved_at = self._now()
+            payload = self.transport.get(MARK_PRICE_ENDPOINT, parameters)
+            page = RawPage(MARK_PRICE_ENDPOINT, parameters, payload, retrieved_at)
+            self._preserve(page)
+            result = _result(payload)
+            if result.get("category") not in {None, BYBIT_CATEGORY}:
+                raise BybitAPIError("mark-price response category does not match linear")
+            if result.get("symbol") not in {None, normalized_symbol}:
+                raise BybitAPIError("mark-price response symbol does not match request")
+            pages.append(page)
+            raw_rows = _required_list(result, "list")
+            if not raw_rows:
+                break
+            parsed = tuple(
+                _parse_mark_price_candle(normalized_symbol, timeframe, row) for row in raw_rows
+            )
+            candles.extend(
+                item
+                for item in parsed
+                if start_ms <= milliseconds(item.open_time) < end_ms
+                and item.close_time <= server_time
+            )
+            oldest_ms = min(milliseconds(item.open_time) for item in parsed)
+            if oldest_ms <= start_ms:
+                break
+            next_end = oldest_ms - 1
+            if next_end >= page_end:
+                raise BybitAPIError("mark-price pagination did not advance")
+            page_end = next_end
+        return MarkPriceDownload(
+            tuple(sorted(candles, key=lambda item: item.open_time)), tuple(pages), server_time
+        )
+
     def _now(self) -> datetime:
         value = self.clock()
         if value.tzinfo is None or value.utcoffset() is None:
@@ -287,6 +413,49 @@ def _parse_candle(symbol: str, timeframe: Timeframe, raw: object) -> Candle:
         )
     except (ValueError, ArithmeticError) as exc:
         raise BybitAPIError("kline row contains an invalid numeric value") from exc
+
+
+def _parse_funding_rate(symbol: str, raw: object) -> FundingRate:
+    item = _object(raw, "funding rate")
+    if _required_string(item, "symbol") != symbol:
+        raise BybitAPIError("funding row symbol does not match request")
+    try:
+        return FundingRate(
+            symbol=symbol,
+            timestamp=utc_from_milliseconds(_required_string(item, "fundingRateTimestamp")),
+            rate=Decimal(_required_string(item, "fundingRate")),
+        )
+    except (ValueError, ArithmeticError) as exc:
+        raise BybitAPIError("funding row contains an invalid numeric value") from exc
+
+
+def _parse_mark_price_candle(symbol: str, timeframe: Timeframe, raw: object) -> MarkPriceCandle:
+    if (
+        not isinstance(raw, list)
+        or len(raw) < 5
+        or not all(isinstance(value, str) for value in raw[:5])
+    ):
+        raise BybitAPIError("mark-price row must contain five string fields")
+    values = cast(list[str], raw)
+    try:
+        return MarkPriceCandle(
+            symbol=symbol,
+            timeframe=timeframe,
+            open_time=utc_from_milliseconds(values[0]),
+            open=Decimal(values[1]),
+            high=Decimal(values[2]),
+            low=Decimal(values[3]),
+            close=Decimal(values[4]),
+        )
+    except (ValueError, ArithmeticError) as exc:
+        raise BybitAPIError("mark-price row contains an invalid numeric value") from exc
+
+
+def _normalized_symbol(symbol: str) -> str:
+    normalized = symbol.strip().upper()
+    if not normalized or not normalized.isalnum():
+        raise ValueError("symbol must be a non-empty uppercase-compatible token")
+    return normalized
 
 
 def _parse_instrument(item: Mapping[str, object]) -> Instrument:

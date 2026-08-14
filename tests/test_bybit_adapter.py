@@ -9,8 +9,10 @@ from typing import Any
 import pytest
 
 from ai_trading_lab.data.adapters.bybit_v5 import (
+    FUNDING_ENDPOINT,
     INSTRUMENT_ENDPOINT,
     KLINE_ENDPOINT,
+    MARK_PRICE_ENDPOINT,
     SERVER_TIME_ENDPOINT,
     BybitAPIError,
     BybitV5PublicClient,
@@ -62,6 +64,20 @@ def instrument(symbol: str = "BTCUSDT", **changes: object) -> dict[str, object]:
 def kline(minute: int, close: str = "101") -> list[str]:
     timestamp = int(datetime(2026, 1, 1, 0, minute, tzinfo=UTC).timestamp() * 1_000)
     return [str(timestamp), "100", "102", "99", close, "10", "1005"]
+
+
+def funding(hour: int, rate: str = "0.0001") -> dict[str, str]:
+    timestamp = int(datetime(2026, 1, 1, hour, tzinfo=UTC).timestamp() * 1_000)
+    return {
+        "symbol": "BTCUSDT",
+        "fundingRate": rate,
+        "fundingRateTimestamp": str(timestamp),
+    }
+
+
+def mark_kline(hour: int) -> list[str]:
+    timestamp = int(datetime(2026, 1, 1, hour, tzinfo=UTC).timestamp() * 1_000)
+    return [str(timestamp), "100", "102", "99", "101"]
 
 
 def test_server_time_preserves_raw_evidence() -> None:
@@ -150,6 +166,75 @@ def test_provider_duplicates_are_preserved_for_validator() -> None:
     )
     assert len(result.candles) == 2
     assert result.candles[0].open_time == result.candles[1].open_time
+
+
+def test_funding_history_paginates_backward_and_sorts() -> None:
+    transport = FakeTransport(
+        {
+            SERVER_TIME_ENDPOINT: [envelope({"timeSecond": "1767300000"})],
+            FUNDING_ENDPOINT: [
+                envelope({"category": "linear", "list": [funding(16), funding(8)]}),
+                envelope({"category": "linear", "list": [funding(0)]}),
+            ],
+        }
+    )
+    result = BybitV5PublicClient(transport, clock=lambda: NOW).fetch_funding_rates(
+        "btcusdt",
+        start=datetime(2026, 1, 1, tzinfo=UTC),
+        end=datetime(2026, 1, 2, tzinfo=UTC),
+        limit=2,
+    )
+    assert [item.timestamp.hour for item in result.rates] == [0, 8, 16]
+    assert result.rates[0].rate.as_tuple().exponent == -4
+    assert (
+        transport.calls[FUNDING_ENDPOINT][1]["endTime"]
+        < transport.calls[FUNDING_ENDPOINT][0]["endTime"]
+    )
+
+
+def test_funding_rejects_bad_request_and_mismatched_symbol() -> None:
+    client = BybitV5PublicClient(FakeTransport({}), clock=lambda: NOW)
+    with pytest.raises(ValueError, match="funding limit"):
+        client.fetch_funding_rates(
+            "BTCUSDT", start=datetime(2026, 1, 1, tzinfo=UTC), end=NOW, limit=201
+        )
+
+
+def test_mark_price_history_is_closed_sorted_and_normalized() -> None:
+    transport = FakeTransport(
+        {
+            SERVER_TIME_ENDPOINT: [envelope({"timeSecond": "1767240000"})],
+            MARK_PRICE_ENDPOINT: [
+                envelope(
+                    {
+                        "category": "linear",
+                        "symbol": "BTCUSDT",
+                        "list": [mark_kline(2), mark_kline(1), mark_kline(0)],
+                    }
+                )
+            ],
+        }
+    )
+    result = BybitV5PublicClient(transport, clock=lambda: NOW).fetch_mark_price_candles(
+        "BTCUSDT",
+        Timeframe.ONE_HOUR,
+        start=datetime(2026, 1, 1, tzinfo=UTC),
+        end=datetime(2026, 1, 1, 3, tzinfo=UTC),
+    )
+    assert [item.open_time.hour for item in result.candles] == [0, 1, 2]
+    assert result.candles[0].close == 101
+    transport = FakeTransport(
+        {
+            SERVER_TIME_ENDPOINT: [envelope({"timeSecond": "1767300000"})],
+            FUNDING_ENDPOINT: [envelope({"list": [{**funding(0), "symbol": "ETHUSDT"}]})],
+        }
+    )
+    with pytest.raises(BybitAPIError, match="symbol"):
+        BybitV5PublicClient(transport, clock=lambda: NOW).fetch_funding_rates(
+            "BTCUSDT",
+            start=datetime(2026, 1, 1, tzinfo=UTC),
+            end=datetime(2026, 1, 2, tzinfo=UTC),
+        )
 
 
 @pytest.mark.parametrize(

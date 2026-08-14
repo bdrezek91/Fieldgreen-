@@ -38,6 +38,26 @@ docker compose --profile data run --rm data \
 The `data` service uses only official public Bybit V5 market endpoints. Do not add API keys to its
 environment. Scheduled incremental collection and backup policy are deferred.
 
+Backfill each frozen BTC/ETH/SOL VALIDATION series. Use the interval recorded by the audited
+instrument snapshot:
+
+```bash
+docker compose --profile data run --rm data python -m ai_trading_lab data funding \
+  --symbol BTCUSDT --interval-minutes 480 \
+  --start 2024-01-01T00:00:00Z --end 2025-01-01T00:00:00Z
+docker compose --profile data run --rm data python -m ai_trading_lab data mark-prices \
+  --symbol BTCUSDT --timeframe 1h \
+  --start 2024-01-01T00:00:00Z --end 2025-01-01T00:00:00Z
+```
+
+After all inputs are `CURATED`, run the one-shot gate. It has no TEST argument:
+
+```bash
+docker compose --profile experiments run --rm experiments \
+  python -m ai_trading_lab strategy validate \
+  --instrument-dataset DS-... --artifacts /artifacts --git-commit "$(git rev-parse HEAD)"
+```
+
 The base image is version-pinned to Python 3.12.14 slim-bookworm. A digest must be recorded
 after the first build on a Docker-enabled host and pinned before any paper-trading deployment.
 

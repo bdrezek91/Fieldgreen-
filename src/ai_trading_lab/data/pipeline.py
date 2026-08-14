@@ -11,12 +11,26 @@ from typing import Protocol
 from ai_trading_lab.data.contracts import (
     CandleDownload,
     DataZone,
+    FundingDownload,
     InstrumentDownload,
+    MarkPriceDownload,
     Timeframe,
 )
-from ai_trading_lab.data.manifest import Artifact, DatasetManifest, candle_dataset_version, utc_iso
+from ai_trading_lab.data.manifest import (
+    Artifact,
+    DatasetManifest,
+    candle_dataset_version,
+    funding_dataset_version,
+    mark_price_dataset_version,
+    utc_iso,
+)
 from ai_trading_lab.data.storage import DataLake
-from ai_trading_lab.data.validation import CandleValidator, ValidationReport
+from ai_trading_lab.data.validation import (
+    CandleValidator,
+    FundingValidator,
+    MarkPriceValidator,
+    ValidationReport,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +62,27 @@ class MarketDataProvider(Protocol):
     def fetch_instruments(self, symbols: frozenset[str] | None = None) -> InstrumentDownload:
         """Return normalized instruments and their raw evidence."""
 
+    def fetch_funding_rates(
+        self,
+        symbol: str,
+        *,
+        start: datetime,
+        end: datetime,
+        limit: int = 200,
+    ) -> FundingDownload:
+        """Return normalized historical funding and raw evidence."""
+
+    def fetch_mark_price_candles(
+        self,
+        symbol: str,
+        timeframe: Timeframe,
+        *,
+        start: datetime,
+        end: datetime,
+        limit: int = 1_000,
+    ) -> MarkPriceDownload:
+        """Return normalized closed historical mark-price bars."""
+
 
 class DataIngestionService:
     """Persist raw evidence before normalization, validation and curation."""
@@ -57,10 +92,14 @@ class DataIngestionService:
         client: MarketDataProvider,
         lake: DataLake,
         validator: CandleValidator | None = None,
+        funding_validator: FundingValidator | None = None,
+        mark_price_validator: MarkPriceValidator | None = None,
     ) -> None:
         self.client = client
         self.lake = lake
         self.validator = validator or CandleValidator()
+        self.funding_validator = funding_validator or FundingValidator()
+        self.mark_price_validator = mark_price_validator or MarkPriceValidator()
 
     def ingest_candles(
         self,
@@ -85,7 +124,12 @@ class DataIngestionService:
         normalized = self.lake.write_candles(
             DataZone.NORMALIZED, download.candles, dataset_version=version
         )
-        report = self.validator.validate(download.candles, as_of=download.server_time)
+        report = self.validator.validate(
+            download.candles,
+            as_of=download.server_time,
+            expected_start=start,
+            expected_end=end,
+        )
         artifacts = raw_artifacts + normalized
         if report.is_valid:
             status = "CURATED"
@@ -149,6 +193,142 @@ class DataIngestionService:
         )
         path = self.lake.write_manifest(manifest)
         return IngestionResult(version, "CURATED", len(download.instruments), 0, 0, path)
+
+    def ingest_funding(
+        self,
+        symbol: str,
+        *,
+        start: datetime,
+        end: datetime,
+        interval_minutes: int,
+    ) -> IngestionResult:
+        """Ingest, validate and curate a historical settled-funding window."""
+        download = self.client.fetch_funding_rates(symbol, start=start, end=end)
+        raw_artifacts = tuple(self.lake.write_raw_page(page) for page in download.raw_pages)
+        identity = (
+            f"{symbol.upper()}|{utc_iso(start)}|{utc_iso(end)}|"
+            f"interval={interval_minutes}|funding-validator-v1"
+        )
+        version = funding_dataset_version(
+            download.rates,
+            transformation="bybit-v5-funding-normalize-v1",
+            identity=identity,
+        )
+        normalized = self.lake.write_funding_rates(
+            DataZone.NORMALIZED, download.rates, dataset_version=version
+        )
+        report = self.funding_validator.validate(
+            download.rates,
+            interval_minutes=interval_minutes,
+            start=start,
+            end=end,
+            as_of=download.server_time,
+        )
+        artifacts = raw_artifacts + normalized
+        if report.is_valid:
+            status = "CURATED"
+            artifacts += self.lake.write_funding_rates(
+                DataZone.CURATED, download.rates, dataset_version=version
+            )
+        else:
+            status = "QUARANTINED"
+            artifacts += self.lake.write_funding_rates(
+                DataZone.QUARANTINE, download.rates, dataset_version=version
+            )
+            artifacts += (self.lake.write_validation_report(version, report),)
+        manifest = DatasetManifest(
+            dataset_version=version,
+            dataset_type="funding_v1",
+            provider="bybit_v5",
+            category="linear",
+            symbols=(symbol.upper(),),
+            timeframes=(f"{interval_minutes}m",),
+            start=utc_iso(start),
+            end=utc_iso(end),
+            generated_at=utc_iso(download.raw_pages[0].retrieved_at) or "",
+            status=status,
+            transformation="bybit-v5-funding-normalize-v1",
+            parent_versions=(),
+            artifacts=artifacts,
+            row_count=report.row_count,
+            validation_errors=report.error_count,
+            validation_warnings=report.warning_count,
+        )
+        path = self.lake.write_manifest(manifest)
+        return IngestionResult(
+            version,
+            status,
+            len(download.rates),
+            report.error_count,
+            report.warning_count,
+            path,
+        )
+
+    def ingest_mark_prices(
+        self,
+        symbol: str,
+        timeframe: Timeframe,
+        *,
+        start: datetime,
+        end: datetime,
+    ) -> IngestionResult:
+        """Ingest and curate one complete historical mark-price window."""
+        download = self.client.fetch_mark_price_candles(symbol, timeframe, start=start, end=end)
+        raw_artifacts = tuple(self.lake.write_raw_page(page) for page in download.raw_pages)
+        identity = f"{symbol.upper()}|{timeframe.value}|{utc_iso(start)}|{utc_iso(end)}"
+        version = mark_price_dataset_version(
+            download.candles,
+            transformation="bybit-v5-mark-price-normalize-v1",
+            identity=identity,
+        )
+        normalized = self.lake.write_mark_price_candles(
+            DataZone.NORMALIZED, download.candles, dataset_version=version
+        )
+        report = self.mark_price_validator.validate(
+            download.candles,
+            as_of=download.server_time,
+            expected_start=start,
+            expected_end=end,
+        )
+        artifacts = raw_artifacts + normalized
+        if report.is_valid:
+            status = "CURATED"
+            artifacts += self.lake.write_mark_price_candles(
+                DataZone.CURATED, download.candles, dataset_version=version
+            )
+        else:
+            status = "QUARANTINED"
+            artifacts += self.lake.write_mark_price_candles(
+                DataZone.QUARANTINE, download.candles, dataset_version=version
+            )
+            artifacts += (self.lake.write_validation_report(version, report),)
+        manifest = DatasetManifest(
+            dataset_version=version,
+            dataset_type="mark_price_ohlc_v1",
+            provider="bybit_v5",
+            category="linear",
+            symbols=(symbol.upper(),),
+            timeframes=(timeframe.value,),
+            start=utc_iso(start),
+            end=utc_iso(end),
+            generated_at=utc_iso(download.raw_pages[0].retrieved_at) or "",
+            status=status,
+            transformation="bybit-v5-mark-price-normalize-v1",
+            parent_versions=(),
+            artifacts=artifacts,
+            row_count=report.row_count,
+            validation_errors=report.error_count,
+            validation_warnings=report.warning_count,
+        )
+        path = self.lake.write_manifest(manifest)
+        return IngestionResult(
+            version,
+            status,
+            len(download.candles),
+            report.error_count,
+            report.warning_count,
+            path,
+        )
 
 
 def _candle_manifest(

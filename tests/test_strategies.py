@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -24,6 +25,7 @@ from ai_trading_lab.strategies.contracts import (
 from ai_trading_lab.strategies.runner import CandidateRunner
 from ai_trading_lab.strategies.scenarios import strategy_smoke_payload
 from ai_trading_lab.strategies.trend import DualChannelTrend
+from ai_trading_lab.strategies.validation_matrix import ValidationMatrixRunner
 
 
 def test_protocol_is_frozen_before_real_results() -> None:
@@ -165,6 +167,79 @@ def test_strategy_smoke_records_candidate_after_controls(tmp_path: Path) -> None
     assert payload["family_decision"] == "INCONCLUSIVE"
     assert payload["test_window"] == "SEALED"
     assert payload["live_trading"] == "BLOCKED"
+
+
+def test_real_matrix_runner_uses_only_frozen_validation_cells(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    candles, base_instrument = _synthetic_market()
+
+    class Loader:
+        def __init__(self, _root: Path) -> None:
+            pass
+
+        def instruments(self, _version: str) -> tuple[object, ...]:
+            return tuple(
+                replace(base_instrument, symbol=symbol) for symbol in RESEARCH_PROTOCOL.symbols
+            )
+
+        def resolve_unique(self, **kwargs: str) -> str:
+            assert kwargs["start"].startswith("2024-01-01")
+            assert kwargs["end"].startswith("2025-01-01")
+            return f"DS-{kwargs['dataset_type']}-{kwargs['symbol']}-{kwargs['timeframe']}"
+
+        def funding(self, version: str) -> tuple[object, ...]:
+            symbol = next(symbol for symbol in RESEARCH_PROTOCOL.symbols if symbol in version)
+            return (
+                SimpleNamespace(symbol=symbol, timestamp=candles[0].open_time, rate=Decimal(0)),
+            )
+
+        def mark_prices(self, _version: str) -> tuple[object, ...]:
+            return (SimpleNamespace(open_time=candles[0].open_time, open=Decimal("100")),)
+
+        def candles(self, version: str) -> tuple[object, ...]:
+            symbol = next(symbol for symbol in RESEARCH_PROTOCOL.symbols if symbol in version)
+            timeframe = Timeframe.FOUR_HOURS if version.endswith("4h") else Timeframe.ONE_HOUR
+            return tuple(replace(item, symbol=symbol, timeframe=timeframe) for item in candles[:3])
+
+    metrics = SimpleNamespace(net_return=Decimal("0.10"), max_drawdown=Decimal("0.10"), trades=10)
+    trend_metrics = SimpleNamespace(net_return=Decimal("0.03"), max_drawdown=Decimal("0.10"))
+
+    class Benchmarks:
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def run_suite(self) -> object:
+            trend = SimpleNamespace(
+                name="SIMPLE_TREND_FOLLOWING",
+                analytics=SimpleNamespace(metrics=trend_metrics),
+            )
+            return SimpleNamespace(
+                deterministic=(trend, object(), object()),
+                random=tuple(object() for _ in range(100)),
+                random_net_returns=SimpleNamespace(p95=Decimal("0.05")),
+            )
+
+    class Candidate:
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def run(self, *_args: object, **_kwargs: object) -> object:
+            return SimpleNamespace(analytics=SimpleNamespace(metrics=metrics))
+
+    monkeypatch.setattr("ai_trading_lab.strategies.validation_matrix.CuratedDataLoader", Loader)
+    monkeypatch.setattr("ai_trading_lab.strategies.validation_matrix.BenchmarkRunner", Benchmarks)
+    monkeypatch.setattr("ai_trading_lab.strategies.validation_matrix.CandidateRunner", Candidate)
+    result = ValidationMatrixRunner(
+        data_root=tmp_path / "data",
+        artifact_root=tmp_path / "artifacts",
+        instrument_dataset_version="DS-INSTRUMENTS",
+        git_commit="0" * 40,
+    ).run()
+    assert result.assessment.decision is FamilyDecision.ADVANCE_TO_PHASE_7
+    assert len(result.cells) == 6
+    assert result.experiments_recorded == 624
+    assert '"test_window": "SEALED"' in result.artifact_path.read_text()
 
 
 def _cells(*, candidate: Decimal, trades: int) -> tuple[ValidationCell, ...]:

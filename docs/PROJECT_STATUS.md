@@ -14,11 +14,11 @@
 
 ## CURRENT PHASE
 
-**PHASE 6 — First strategy family: IMPLEMENTATION COMPLETE**
+**PHASE 6 — Real-evidence gate readiness: IMPLEMENTATION COMPLETE; DATA BLOCKED**
 
-Work is stopped at the phase boundary. PHASE 7 has not started and requires a new explicit user
-instruction. PHASE 6 produced a reproducible research protocol and candidate implementation, not
-evidence of a trading edge.
+PHASE 7 was authorized conditionally, but its entry gate cannot run without the curated 2024 Bybit
+matrix. PHASE 7 robustness work has therefore not started. PHASE 6 still provides no evidence of a
+trading edge.
 
 ## DONE
 
@@ -53,14 +53,23 @@ evidence of a trading edge.
   returns `INCONCLUSIVE`.
 - Added protocol, validation-gate, prefix/lookahead, symmetric-direction, persistence and CLI
   tests. Added no regimes, walk-forward, ML, credentials, private API or execution adapter.
+- Added official public funding-history and mark-price-kline adapters with backward pagination,
+  immutable raw evidence, exact decimals, Parquet partitioning and manifests.
+- Added funding cadence/boundary validation and OHLCV/mark requested-window boundary checks;
+  partial, duplicate, missing or misaligned history is quarantined.
+- Added hash-verifying curated-data loaders and exact manifest selection; missing, ambiguous or
+  corrupt inputs fail closed.
+- Added the one-shot six-cell VALIDATION runner: 624 experiments, fixed quantities/cash, complete
+  funding and mark-price inputs, immutable gate artifact and no TEST selection path.
 
 ## IN PROGRESS
 
-None. Work is intentionally stopped after PHASE 6.
+Real backfill is blocked by public Bybit connectivity in the managed runner. The attempted official
+`api.bybit.com/v5/market/time` request returned `Site Unavailable`; no substitute data was used.
 
 ## NEXT
 
-On explicit instruction only: **PHASE 7 — Walk-forward and robustness**.
+On a network-enabled VPS: backfill and curate the exact 2024 matrix, then run the frozen gate once.
 
 Before opening the sealed TEST window, first complete historical funding ingestion and the exact
 curated validation matrix. Run the frozen PHASE 6 gate once and record every result. Only an
@@ -71,9 +80,9 @@ curated validation matrix. Run the frozen PHASE 6 gate once and record every res
 
 - Docker/Podman is unavailable in the local managed runner; GitHub Actions is the container gate.
 - Python and uv images are version-pinned but not content-digest-pinned.
-- No historical funding ingestion or complete curated six-cell validation matrix exists; the
+- Historical ingestion code exists, but the complete curated six-cell matrix is not present; the
   family therefore has no real-market decision.
-- Public Bybit connectivity still needs an operational VPS backfill proof.
+- Public Bybit access is blocked in the managed runner and needs an operational VPS backfill.
 - SQLite is single-VPS infrastructure and needs backup/retention/restore policy.
 - Funding remains portfolio-level cash flow rather than allocated closed-trade PnL.
 - Average/Median R and MAE/MFE remain null until point-in-time risk/path contracts exist.
@@ -94,17 +103,19 @@ curated validation matrix. Run the frozen PHASE 6 gate once and record every res
 
 ## PHASE GATE
 
-PHASE 6 local validation at this status update:
+PHASE 6 gate-readiness validation at this status update:
 
-- package version `0.6.0`, frozen dependency sync and lock: PASS;
-- Ruff lint/format and strict mypy across 40 source files: PASS;
-- pytest: 146 PASS; statement plus branch coverage: 95.81%, above required 95%;
-- Bandit, dependency audit, source/wheel build and YAML parsing: PASS;
+- package version `0.6.1`, frozen dependency sync and lock consistency: PASS;
+- Ruff lint/format and strict mypy across 42 source files: PASS;
+- pytest: 162 PASS; statement plus branch coverage: 95.06%, above required 95%;
+- Bandit: PASS; dependency audit: no known vulnerabilities in auditable dependencies;
+- source distribution, wheel build and YAML parsing: PASS;
 - signal contract/compiler regression and strategy prefix-invariance tests: PASS during development;
 - synthetic 104-experiment integration: PASS, decision `INCONCLUSIVE`, TEST `SEALED`;
 - LIVE fail-closed and local secret-pattern review: PASS;
-- Docker Compose, `phase-6` image, 104-experiment runtime, LIVE block and Gitleaks: PASS in
-  GitHub Actions run `31780239898`;
+- local missing-matrix fail-closed test: PASS with exit code 3, `INCONCLUSIVE` and TEST `SEALED`;
+- local Docker is unavailable; Compose, image and Gitleaks remain pending GitHub Actions;
 - credentials, private API fields, paper/live execution added: NO (correct);
 - real-market edge claimed: NO (correct);
-- PHASE 7 started: NO (correct).
+- real Bybit backfill completed: NO — network blocker recorded, no fabrication;
+- PHASE 7 robustness started: NO (correct; entry gate not passed).

@@ -17,6 +17,9 @@ an edge. Exactly one parameter point was registered before real validation evide
 | Direction | symmetric long and short |
 | Decision time | candle close |
 | Earliest fill | next eligible bar open |
+| Initial cash | 100,000 USDT |
+| Fixed quantity | BTC 0.1; ETH 1; SOL 10 |
+| Leverage | 1× |
 
 At time `t`, channels exclude candle `t`; only completed history through `t-1` is used. A close
 above/below the prior 55-bar channel targets long/short. An existing position exits when price
@@ -35,8 +38,8 @@ All windows are half-open UTC intervals:
 
 The required validation matrix contains BTCUSDT, ETHUSDT and SOLUSDT at 1h and 4h: exactly six
 cells. Evidence must use immutable curated Bybit USDT-perpetual datasets, complete historical
-funding, identical execution assumptions, and the PHASE 5 benchmark controls. Synthetic data can
-test plumbing only and always returns `INCONCLUSIVE`.
+funding, 1h mark-price history, an explicit instrument snapshot, identical execution assumptions,
+and the PHASE 5 controls. Synthetic data can test plumbing only and returns `INCONCLUSIVE`.
 
 ## Gate fixed before results
 
@@ -66,5 +69,6 @@ Carlo remain PHASE 7 work and must use the complete attempt ledger.
 
 `atl strategy self-test` runs the four PHASE 5 controls plus the candidate on synthetic candles,
 records 104 immutable experiments and proves deterministic integration. It is deliberately
-`INCONCLUSIVE`. Historical funding ingestion and a complete curated six-cell matrix do not yet
-exist, so PHASE 6 makes no real-market performance claim and does not open TEST.
+`INCONCLUSIVE`. Funding/mark ingestion and the one-shot six-cell runner now exist, but the managed
+development environment cannot reach `api.bybit.com`; no dataset was fabricated. The gate remains
+`INCONCLUSIVE`, and TEST is unopened.

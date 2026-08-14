@@ -16,7 +16,14 @@ from typing import Final
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from ai_trading_lab.data.contracts import Candle, DataZone, Instrument, RawPage
+from ai_trading_lab.data.contracts import (
+    Candle,
+    DataZone,
+    FundingRate,
+    Instrument,
+    MarkPriceCandle,
+    RawPage,
+)
 from ai_trading_lab.data.manifest import Artifact, DatasetManifest, file_sha256
 from ai_trading_lab.data.validation import ValidationReport
 
@@ -100,6 +107,70 @@ class DataLake:
         return Artifact(
             DataZone.CURATED.value, relative.as_posix(), file_sha256(target), len(instruments)
         )
+
+    def write_funding_rates(
+        self, zone: DataZone, rates: tuple[FundingRate, ...], *, dataset_version: str
+    ) -> tuple[Artifact, ...]:
+        """Write settled funding rates partitioned by symbol, year and month."""
+        if zone not in {DataZone.NORMALIZED, DataZone.CURATED, DataZone.QUARANTINE}:
+            raise ValueError("funding Parquet is allowed only in normalized, curated or quarantine")
+        grouped: dict[tuple[str, int, int], list[FundingRate]] = {}
+        for item in rates:
+            grouped.setdefault((item.symbol, item.timestamp.year, item.timestamp.month), []).append(
+                item
+            )
+        artifacts: list[Artifact] = []
+        for (symbol, year, month), rows in sorted(grouped.items()):
+            relative = (
+                Path(zone.value)
+                / "bybit"
+                / "linear"
+                / "funding"
+                / f"symbol={symbol}"
+                / f"year={year:04d}"
+                / f"month={month:02d}"
+                / f"part-{dataset_version.lower()}.parquet"
+            )
+            target = self.root / relative
+            self._write_parquet_once(
+                target, _funding_table(tuple(sorted(rows, key=lambda item: item.timestamp)))
+            )
+            artifacts.append(
+                Artifact(zone.value, relative.as_posix(), file_sha256(target), len(rows))
+            )
+        return tuple(artifacts)
+
+    def write_mark_price_candles(
+        self, zone: DataZone, candles: tuple[MarkPriceCandle, ...], *, dataset_version: str
+    ) -> tuple[Artifact, ...]:
+        """Write mark-price bars partitioned by timeframe, symbol, year and month."""
+        if zone not in {DataZone.NORMALIZED, DataZone.CURATED, DataZone.QUARANTINE}:
+            raise ValueError("mark-price Parquet requires normalized, curated or quarantine zone")
+        grouped: dict[tuple[str, str, int, int], list[MarkPriceCandle]] = {}
+        for item in candles:
+            key = (item.symbol, item.timeframe.value, item.open_time.year, item.open_time.month)
+            grouped.setdefault(key, []).append(item)
+        artifacts: list[Artifact] = []
+        for (symbol, timeframe, year, month), rows in sorted(grouped.items()):
+            relative = (
+                Path(zone.value)
+                / "bybit"
+                / "linear"
+                / "mark_price"
+                / f"timeframe={timeframe}"
+                / f"symbol={symbol}"
+                / f"year={year:04d}"
+                / f"month={month:02d}"
+                / f"part-{dataset_version.lower()}.parquet"
+            )
+            target = self.root / relative
+            self._write_parquet_once(
+                target, _mark_price_table(tuple(sorted(rows, key=lambda item: item.open_time)))
+            )
+            artifacts.append(
+                Artifact(zone.value, relative.as_posix(), file_sha256(target), len(rows))
+            )
+        return tuple(artifacts)
 
     def write_validation_report(self, dataset_version: str, report: ValidationReport) -> Artifact:
         """Persist all validation findings beside quarantine data."""
@@ -217,6 +288,54 @@ def _instrument_table(instruments: tuple[Instrument, ...]) -> pa.Table:
             row[key] = _scale(getattr(item, key))
         rows.append(row)
     return pa.Table.from_pylist(rows)
+
+
+def _funding_table(rates: tuple[FundingRate, ...]) -> pa.Table:
+    schema = pa.schema(
+        [
+            pa.field("timestamp", TIMESTAMP, nullable=False),
+            pa.field("rate", DECIMAL, nullable=False),
+            pa.field("source", pa.string(), nullable=False),
+        ]
+    )
+    return pa.Table.from_pylist(
+        [
+            {
+                "timestamp": item.timestamp.astimezone(UTC),
+                "rate": _scale(item.rate),
+                "source": item.source,
+            }
+            for item in rates
+        ],
+        schema=schema,
+    )
+
+
+def _mark_price_table(candles: tuple[MarkPriceCandle, ...]) -> pa.Table:
+    schema = pa.schema(
+        [
+            pa.field("open_time", TIMESTAMP, nullable=False),
+            pa.field("open", DECIMAL, nullable=False),
+            pa.field("high", DECIMAL, nullable=False),
+            pa.field("low", DECIMAL, nullable=False),
+            pa.field("close", DECIMAL, nullable=False),
+            pa.field("source", pa.string(), nullable=False),
+        ]
+    )
+    return pa.Table.from_pylist(
+        [
+            {
+                "open_time": item.open_time.astimezone(UTC),
+                "open": _scale(item.open),
+                "high": _scale(item.high),
+                "low": _scale(item.low),
+                "close": _scale(item.close),
+                "source": item.source,
+            }
+            for item in candles
+        ],
+        schema=schema,
+    )
 
 
 def _scale(value: Decimal) -> Decimal:

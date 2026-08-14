@@ -126,6 +126,37 @@ def test_strategy_self_test_records_candidate_and_keeps_test_sealed(
     assert payload["test_window"] == "SEALED"
 
 
+def test_strategy_validation_fails_closed_when_curated_matrix_is_missing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    class MissingRunner:
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def run(self) -> object:
+            raise cli.DatasetSelectionError("curated matrix missing")
+
+    monkeypatch.setattr(cli, "ValidationMatrixRunner", MissingRunner)
+    assert (
+        cli.main(
+            [
+                "strategy",
+                "validate",
+                "--instrument-dataset",
+                "DS-INSTRUMENTS",
+                "--artifacts",
+                "artifacts",
+                "--git-commit",
+                "0" * 40,
+            ]
+        )
+        == 3
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["family_decision"] == "INCONCLUSIVE"
+    assert payload["test_window"] == "SEALED"
+
+
 def test_unhandled_command_is_defensive(monkeypatch: pytest.MonkeyPatch) -> None:
     class Args:
         command = "unexpected"
@@ -174,6 +205,17 @@ def test_data_commands_dispatch_without_real_network(
             assert kwargs["start"].tzinfo is not None
             return Result()
 
+        def ingest_funding(self, *args: object, **kwargs: object) -> Result:
+            assert args == ("BTCUSDT",)
+            assert kwargs["interval_minutes"] == 480
+            assert kwargs["start"].tzinfo is not None
+            return Result()
+
+        def ingest_mark_prices(self, *args: object, **kwargs: object) -> Result:
+            assert args[:2] == ("BTCUSDT", cli.Timeframe.ONE_HOUR)
+            assert kwargs["end"].tzinfo is not None
+            return Result()
+
     monkeypatch.setattr(cli, "DataIngestionService", Service)
     assert cli.main(["data", "instruments", "--symbols", "BTCUSDT"]) == 0
     assert json.loads(capsys.readouterr().out)["dataset_version"] == "DS-TEST"
@@ -195,6 +237,42 @@ def test_data_commands_dispatch_without_real_network(
         == 0
     )
     assert json.loads(capsys.readouterr().out)["live_trading"] == "BLOCKED"
+    assert (
+        cli.main(
+            [
+                "data",
+                "funding",
+                "--symbol",
+                "BTCUSDT",
+                "--start",
+                "2024-01-01T00:00:00Z",
+                "--end",
+                "2025-01-01T00:00:00Z",
+                "--interval-minutes",
+                "480",
+            ]
+        )
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["status"] == "CURATED"
+    assert (
+        cli.main(
+            [
+                "data",
+                "mark-prices",
+                "--symbol",
+                "BTCUSDT",
+                "--timeframe",
+                "1h",
+                "--start",
+                "2024-01-01T00:00:00Z",
+                "--end",
+                "2025-01-01T00:00:00Z",
+            ]
+        )
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["status"] == "CURATED"
 
 
 def test_data_transport_failure_is_structured(

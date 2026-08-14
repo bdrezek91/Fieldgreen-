@@ -131,7 +131,8 @@ gate is documented in [`STRATEGY_FAMILY_1.md`](STRATEGY_FAMILY_1.md).
 - A bar contains no true trade path, queue position, spread history or market depth.
 - A single participation cap is a research assumption, not a fill probability model.
 - Stop triggering uses OHLC extremes and cannot model gaps between intrabar trades.
-- Funding and mark inputs exist as contracts but their historical ingestion is not yet built.
+- Historical funding and mark-price ingestion exists; real evaluation still requires complete
+  curated VPS datasets and an explicit instrument snapshot.
 - Margin is isolated-style and simplified; liquidation is explicitly approximate.
 - Portfolio risk constraints and correlation limits are not part of the backtester.
 - No T0 adapter, Nautilus adapter or T2 replay engine is installed yet.

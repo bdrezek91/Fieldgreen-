@@ -124,6 +124,35 @@ class Instrument:
 
 
 @dataclass(frozen=True, slots=True)
+class FundingRate:
+    """One settled perpetual funding rate at its official UTC settlement time."""
+
+    symbol: str
+    timestamp: datetime
+    rate: Decimal
+    source: str = "bybit_v5"
+
+
+@dataclass(frozen=True, slots=True)
+class MarkPriceCandle:
+    """Historical mark-price OHLC bar used for valuation and funding settlements."""
+
+    symbol: str
+    timeframe: Timeframe
+    open_time: datetime
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    source: str = "bybit_v5"
+
+    @property
+    def close_time(self) -> datetime:
+        """Return the exclusive bar end."""
+        return self.open_time + self.timeframe.duration
+
+
+@dataclass(frozen=True, slots=True)
 class RawPage:
     """One unmodified provider response with retrieval context."""
 
@@ -148,6 +177,24 @@ class InstrumentDownload:
 
     instruments: tuple[Instrument, ...]
     raw_pages: tuple[RawPage, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class FundingDownload:
+    """Settled funding rates plus raw pages and provider time evidence."""
+
+    rates: tuple[FundingRate, ...]
+    raw_pages: tuple[RawPage, ...]
+    server_time: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class MarkPriceDownload:
+    """Closed mark-price bars with raw provider evidence."""
+
+    candles: tuple[MarkPriceCandle, ...]
+    raw_pages: tuple[RawPage, ...]
+    server_time: datetime
 
 
 def utc_from_milliseconds(value: str | int) -> datetime:

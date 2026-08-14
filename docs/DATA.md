@@ -3,8 +3,8 @@
 ## Status and scope
 
 PHASE 2 implements a credential-free data engine for Bybit linear USDT perpetuals. It owns
-instrument metadata and closed OHLCV candles. Funding, open interest, liquidations, mark/index
-prices, trades and order books remain planned extensions; their future adapters must reuse the
+instrument metadata, closed OHLCV candles, funding history and mark-price OHLC. Open interest,
+liquidations, index prices, trades and order books remain planned extensions and must reuse the
 same raw evidence, validation, manifest and storage boundary.
 
 No private endpoint, API key or trading endpoint exists in this phase.
@@ -14,6 +14,8 @@ Official contracts verified on 2026-08-14:
 - [Bybit V5 Get Kline](https://bybit-exchange.github.io/docs/v5/market/kline);
 - [Bybit V5 Get Instruments Info](https://bybit-exchange.github.io/docs/v5/market/instrument);
 - [Bybit V5 Get Server Time](https://bybit-exchange.github.io/docs/v5/market/time);
+- [Bybit V5 Funding History](https://bybit-exchange.github.io/docs/v5/market/history-fund-rate);
+- [Bybit V5 Mark Price Kline](https://bybit-exchange.github.io/docs/v5/market/mark-kline);
 - [Bybit V5 rate limits](https://bybit-exchange.github.io/docs/v5/rate-limit).
 
 The adapter does not use CCXT types. Domain contracts are independent of the provider so a
@@ -166,4 +168,13 @@ These commands access public market endpoints only. They cannot submit orders.
 - Earliest historical date per instrument.
 - Whether canonical higher timeframes are only derived from 1m or also retained natively.
 - Scheduled incremental ingestion and late-data reconciliation.
-- Funding, open-interest, mark/index, trades and order-book schemas.
+- Open-interest, index, trades and order-book schemas.
+
+## Funding and mark-price history
+
+Funding is paginated backward, preserved raw and validated against an explicit symbol-specific
+settlement interval. Missing initial, internal or final settlements, duplicates, wrong symbols,
+non-UTC timestamps and cadence misalignment quarantine the entire batch.
+
+Mark-price bars use the same raw → normalized → curated/quarantine path. Candle and mark validators
+also enforce both requested window boundaries, so a partial API response cannot be marked complete.

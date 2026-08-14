@@ -16,11 +16,13 @@ from ai_trading_lab.backtesting.scenarios import reference_smoke_payload
 from ai_trading_lab.benchmarks.scenarios import benchmark_smoke_payload
 from ai_trading_lab.data.adapters.bybit_v5 import BybitAPIError, BybitV5PublicClient
 from ai_trading_lab.data.contracts import INITIAL_SYMBOLS, Timeframe
+from ai_trading_lab.data.loader import DatasetSelectionError
 from ai_trading_lab.data.pipeline import DataIngestionService, IngestionResult
 from ai_trading_lab.data.storage import DataLake
 from ai_trading_lab.experiments.scenarios import experiment_smoke_payload
 from ai_trading_lab.settings import Settings
 from ai_trading_lab.strategies.scenarios import strategy_smoke_payload
+from ai_trading_lab.strategies.validation_matrix import ValidationMatrixRunner
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,6 +46,21 @@ def build_parser() -> argparse.ArgumentParser:
     candles.add_argument("--timeframe", required=True, choices=[item.value for item in Timeframe])
     candles.add_argument("--start", required=True, help="inclusive ISO-8601 UTC timestamp")
     candles.add_argument("--end", required=True, help="exclusive ISO-8601 UTC timestamp")
+    funding = data_commands.add_parser("funding", help="ingest settled Bybit funding history")
+    funding.add_argument("--symbol", required=True)
+    funding.add_argument("--start", required=True, help="inclusive ISO-8601 UTC timestamp")
+    funding.add_argument("--end", required=True, help="exclusive ISO-8601 UTC timestamp")
+    funding.add_argument(
+        "--interval-minutes",
+        required=True,
+        type=int,
+        help="audited funding cadence from the applicable instrument snapshot",
+    )
+    mark = data_commands.add_parser("mark-prices", help="ingest closed Bybit mark-price bars")
+    mark.add_argument("--symbol", required=True)
+    mark.add_argument("--timeframe", required=True, choices=[item.value for item in Timeframe])
+    mark.add_argument("--start", required=True, help="inclusive ISO-8601 UTC timestamp")
+    mark.add_argument("--end", required=True, help="exclusive ISO-8601 UTC timestamp")
     backtest = subparsers.add_parser("backtest", help="run safe backtesting utilities")
     backtest_commands = backtest.add_subparsers(dest="backtest_command", required=True)
     backtest_commands.add_parser("self-test", help="run the deterministic synthetic kernel check")
@@ -65,6 +82,12 @@ def build_parser() -> argparse.ArgumentParser:
         "self-test", help="run and record the synthetic candidate-family smoke test"
     )
     strategy_smoke.add_argument("--root", help="artifact root; defaults to a temporary directory")
+    strategy_validation = strategy_commands.add_parser(
+        "validate", help="run the frozen six-cell real-data VALIDATION gate"
+    )
+    strategy_validation.add_argument("--instrument-dataset", required=True)
+    strategy_validation.add_argument("--artifacts", required=True)
+    strategy_validation.add_argument("--git-commit", required=True)
     return parser
 
 
@@ -137,6 +160,38 @@ def main(argv: Sequence[str] | None = None) -> int:
                 with tempfile.TemporaryDirectory(prefix="atl-phase-6-") as directory:
                     _print_payload(strategy_smoke_payload(Path(directory)))
             return 0
+        if args.strategy_command == "validate":
+            try:
+                validation_result = ValidationMatrixRunner(
+                    data_root=settings.data_root,
+                    artifact_root=Path(args.artifacts),
+                    instrument_dataset_version=args.instrument_dataset,
+                    git_commit=args.git_commit,
+                ).run()
+            except (DatasetSelectionError, KeyError) as exc:
+                _print_payload(
+                    {
+                        "status": "BLOCKED",
+                        "family_decision": "INCONCLUSIVE",
+                        "reason": str(exc),
+                        "test_window": "SEALED",
+                        "live_trading": "BLOCKED",
+                    }
+                )
+                return 3
+            _print_payload(
+                {
+                    "status": "COMPLETE",
+                    "family_decision": validation_result.assessment.decision.value,
+                    "reason": validation_result.assessment.reason,
+                    "cells": len(validation_result.cells),
+                    "experiments_recorded": validation_result.experiments_recorded,
+                    "artifact": str(validation_result.artifact_path),
+                    "test_window": "SEALED",
+                    "live_trading": "BLOCKED",
+                }
+            )
+            return 0
         raise AssertionError(f"Unhandled strategy command: {args.strategy_command}")
     if args.command == "data":
         lake = DataLake(settings.data_root)
@@ -148,6 +203,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 0
             if args.data_command == "candles":
                 result = service.ingest_candles(
+                    args.symbol,
+                    Timeframe(args.timeframe),
+                    start=_utc_timestamp(args.start),
+                    end=_utc_timestamp(args.end),
+                )
+                _print_payload(_result_payload(result))
+                return 0
+            if args.data_command == "funding":
+                result = service.ingest_funding(
+                    args.symbol,
+                    start=_utc_timestamp(args.start),
+                    end=_utc_timestamp(args.end),
+                    interval_minutes=args.interval_minutes,
+                )
+                _print_payload(_result_payload(result))
+                return 0
+            if args.data_command == "mark-prices":
+                result = service.ingest_mark_prices(
                     args.symbol,
                     Timeframe(args.timeframe),
                     start=_utc_timestamp(args.start),

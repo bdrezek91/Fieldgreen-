@@ -51,6 +51,19 @@ ATL_DATA_ROOT=data uv run atl data instruments
 ATL_DATA_ROOT=data uv run atl data candles \
   --symbol BTCUSDT --timeframe 1m \
   --start 2026-08-01T00:00:00Z --end 2026-08-02T00:00:00Z
+ATL_DATA_ROOT=data uv run atl data funding \
+  --symbol BTCUSDT --interval-minutes 480 \
+  --start 2024-01-01T00:00:00Z --end 2025-01-01T00:00:00Z
+ATL_DATA_ROOT=data uv run atl data mark-prices \
+  --symbol BTCUSDT --timeframe 1h \
+  --start 2024-01-01T00:00:00Z --end 2025-01-01T00:00:00Z
+```
+
+The frozen real-data gate is intentionally separate and has no TEST option:
+
+```bash
+ATL_DATA_ROOT=data uv run atl strategy validate \
+  --instrument-dataset DS-... --artifacts artifacts --git-commit "$(git rev-parse HEAD)"
 ```
 
 ## Docker

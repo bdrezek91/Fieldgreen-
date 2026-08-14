@@ -69,6 +69,16 @@ jobs:
           echo "$strategy" | grep '"random_entry_runs": 100'
           echo "$strategy" | grep '"family_decision": "INCONCLUSIVE"'
           echo "$strategy" | grep '"test_window": "SEALED"'
+          if docker compose --profile experiments run --rm experiments \
+            python -m ai_trading_lab strategy validate \
+            --instrument-dataset DS-MISSING --artifacts /artifacts/ci-missing \
+            --git-commit 0000000000000000000000000000000000000000 \
+            > /tmp/missing-matrix.json; then
+            echo "missing curated matrix unexpectedly executed"
+            exit 1
+          fi
+          grep '"family_decision": "INCONCLUSIVE"' /tmp/missing-matrix.json
+          grep '"test_window": "SEALED"' /tmp/missing-matrix.json
       - name: Prove LIVE fails closed in the image
         run: |
           if docker run --rm --network none -e ATL_MODE=LIVE \

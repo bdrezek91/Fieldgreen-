@@ -13,6 +13,10 @@ from ai_trading_lab.strategies.contracts import (
 )
 from ai_trading_lab.strategies.runner import CandidateRun, CandidateRunner
 from ai_trading_lab.strategies.trend import DualChannelTrend
+from ai_trading_lab.strategies.validation_matrix import (
+    ValidationMatrixResult,
+    ValidationMatrixRunner,
+)
 
 __all__ = [
     "EXPECTED_VALIDATION_CELLS",
@@ -26,5 +30,7 @@ __all__ = [
     "FamilyDecision",
     "StrategyResearchProtocol",
     "ValidationCell",
+    "ValidationMatrixResult",
+    "ValidationMatrixRunner",
     "assess_validation",
 ]

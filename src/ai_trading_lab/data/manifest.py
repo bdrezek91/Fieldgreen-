@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from ai_trading_lab.data.contracts import Candle
+from ai_trading_lab.data.contracts import Candle, FundingRate, MarkPriceCandle
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +68,44 @@ def candle_dataset_version(
             _decimal(candle.volume),
             _decimal(candle.turnover),
             candle.source,
+        )
+        digest.update(("|".join(fields) + "\n").encode())
+    return f"DS-{digest.hexdigest()[:20].upper()}"
+
+
+def funding_dataset_version(
+    rates: tuple[FundingRate, ...], *, transformation: str, identity: str = ""
+) -> str:
+    """Build a content-derived identity for settled funding history."""
+    digest = hashlib.sha256()
+    digest.update(f"funding-v1\n{transformation}\n{identity}\n".encode())
+    for item in sorted(rates, key=lambda row: (row.symbol, row.timestamp)):
+        fields = (
+            item.symbol,
+            item.timestamp.astimezone(UTC).isoformat(),
+            _decimal(item.rate),
+            item.source,
+        )
+        digest.update(("|".join(fields) + "\n").encode())
+    return f"DS-{digest.hexdigest()[:20].upper()}"
+
+
+def mark_price_dataset_version(
+    candles: tuple[MarkPriceCandle, ...], *, transformation: str, identity: str = ""
+) -> str:
+    """Build a content-derived identity for historical mark-price bars."""
+    digest = hashlib.sha256()
+    digest.update(f"mark-price-v1\n{transformation}\n{identity}\n".encode())
+    for item in sorted(candles, key=lambda row: (row.symbol, row.timeframe.value, row.open_time)):
+        fields = (
+            item.symbol,
+            item.timeframe.value,
+            item.open_time.astimezone(UTC).isoformat(),
+            _decimal(item.open),
+            _decimal(item.high),
+            _decimal(item.low),
+            _decimal(item.close),
+            item.source,
         )
         digest.update(("|".join(fields) + "\n").encode())
     return f"DS-{digest.hexdigest()[:20].upper()}"
