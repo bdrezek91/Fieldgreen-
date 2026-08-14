@@ -5,13 +5,19 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from ai_trading_lab.backtesting.contracts import BacktestRequest, OrderIntent, OrderType, Side
+from ai_trading_lab.backtesting.contracts import (
+    BacktestRequest,
+    BacktestResult,
+    OrderIntent,
+    OrderType,
+    Side,
+)
 from ai_trading_lab.backtesting.engine import ReferenceBarBacktestEngine
 from ai_trading_lab.data.contracts import Candle, Instrument, Timeframe
 
 
-def reference_smoke_payload() -> dict[str, object]:
-    """Run a deterministic next-bar execution scenario and return its fingerprint."""
+def reference_smoke_run() -> tuple[BacktestRequest, BacktestResult]:
+    """Build and execute the deterministic non-strategy reference scenario."""
     start = datetime(2026, 1, 1, tzinfo=UTC)
     candles = tuple(
         Candle(
@@ -66,13 +72,18 @@ def reference_smoke_payload() -> dict[str, object]:
         ),
         initial_cash=Decimal("10000"),
     )
-    result = ReferenceBarBacktestEngine().run(request)
+    return request, ReferenceBarBacktestEngine().run(request)
+
+
+def reference_smoke_payload() -> dict[str, object]:
+    """Run a deterministic next-bar execution scenario and return its fingerprint."""
+    request, result = reference_smoke_run()
     fill = result.fills[0]
     return {
         "status": "PASS",
         "engine": result.engine_version,
         "run_id": result.run_id,
-        "dataset_version": result.dataset_version,
+        "dataset_version": request.dataset_version,
         "fills": len(result.fills),
         "first_fill_time": fill.timestamp.isoformat(),
         "first_fill_price": str(fill.price),

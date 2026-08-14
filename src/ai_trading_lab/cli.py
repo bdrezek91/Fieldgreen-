@@ -6,20 +6,23 @@ import argparse
 import json
 import signal
 import sys
+import tempfile
 import threading
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from pathlib import Path
 
 from ai_trading_lab.backtesting.scenarios import reference_smoke_payload
 from ai_trading_lab.data.adapters.bybit_v5 import BybitAPIError, BybitV5PublicClient
 from ai_trading_lab.data.contracts import INITIAL_SYMBOLS, Timeframe
 from ai_trading_lab.data.pipeline import DataIngestionService, IngestionResult
 from ai_trading_lab.data.storage import DataLake
+from ai_trading_lab.experiments.scenarios import experiment_smoke_payload
 from ai_trading_lab.settings import Settings
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the small, non-trading PHASE 1 command surface."""
+    """Build the safe, non-execution command surface."""
     parser = argparse.ArgumentParser(prog="atl")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -42,6 +45,12 @@ def build_parser() -> argparse.ArgumentParser:
     backtest = subparsers.add_parser("backtest", help="run safe backtesting utilities")
     backtest_commands = backtest.add_subparsers(dest="backtest_command", required=True)
     backtest_commands.add_parser("self-test", help="run the deterministic synthetic kernel check")
+    experiment = subparsers.add_parser("experiment", help="run safe experiment utilities")
+    experiment_commands = experiment.add_subparsers(dest="experiment_command", required=True)
+    experiment_smoke = experiment_commands.add_parser(
+        "self-test", help="verify analytics and experiment persistence"
+    )
+    experiment_smoke.add_argument("--root", help="artifact root; defaults to a temporary directory")
     return parser
 
 
@@ -49,7 +58,7 @@ def status_payload(settings: Settings) -> dict[str, object]:
     """Build the public health/status payload."""
     return {
         "service": "ai-trading-lab",
-        "phase": 3,
+        "phase": 4,
         "status": "healthy",
         **settings.public_status(),
     }
@@ -88,6 +97,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             _print_payload(reference_smoke_payload())
             return 0
         raise AssertionError(f"Unhandled backtest command: {args.backtest_command}")
+    if args.command == "experiment":
+        if args.experiment_command == "self-test":
+            if args.root:
+                _print_payload(experiment_smoke_payload(Path(args.root)))
+            else:
+                with tempfile.TemporaryDirectory(prefix="atl-phase-4-") as directory:
+                    _print_payload(experiment_smoke_payload(Path(directory)))
+            return 0
+        raise AssertionError(f"Unhandled experiment command: {args.experiment_command}")
     if args.command == "data":
         lake = DataLake(settings.data_root)
         service = DataIngestionService(BybitV5PublicClient(raw_page_sink=lake.write_raw_page), lake)

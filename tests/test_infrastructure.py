@@ -31,6 +31,18 @@ def test_public_data_service_is_explicit_and_persistent() -> None:
         assert secret_name not in compose
 
 
+def test_experiment_service_is_offline_and_persistent() -> None:
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "profiles: [experiments]" in compose
+    assert "ATL_MODE: BACKTEST" in compose
+    assert "research-artifacts:/artifacts" in compose
+    assert "research-artifacts:" in compose
+    assert "network_mode: none" in compose
+    assert "mkdir /data /artifacts" in dockerfile
+    assert "chown atl:atl /data /artifacts" in dockerfile
+
+
 def test_container_runs_unprivileged_and_exposes_no_port() -> None:
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert dockerfile.startswith("FROM python:3.12.14-slim-bookworm\n")
@@ -42,7 +54,17 @@ def test_container_runs_unprivileged_and_exposes_no_port() -> None:
 
 def test_local_secret_and_data_files_are_ignored() -> None:
     patterns = set((ROOT / ".gitignore").read_text(encoding="utf-8").splitlines())
-    assert {".env", ".env.*", "/data/", "artifacts/", "models/", "*.parquet"} <= patterns
+    assert {
+        ".env",
+        ".env.*",
+        "/data/",
+        "artifacts/",
+        "/backtests/",
+        "/experiments/",
+        "models/",
+        "*.parquet",
+        "*.sqlite3",
+    } <= patterns
     assert "!.env.example" in patterns
 
 

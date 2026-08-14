@@ -20,6 +20,8 @@ htmlcov/
 # Research and market data (never commit)
 /data/
 artifacts/
+/backtests/
+/experiments/
 models/
 mlruns/
 logs/

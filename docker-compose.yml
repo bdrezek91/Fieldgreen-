@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ai-trading-lab:phase-3
+    image: ai-trading-lab:phase-4
     environment:
       ATL_MODE: RESEARCH
       ATL_LOG_LEVEL: INFO
@@ -26,7 +26,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ai-trading-lab:phase-3
+    image: ai-trading-lab:phase-4
     profiles: [data]
     command: ["python", "-m", "ai_trading_lab", "status"]
     environment:
@@ -47,5 +47,31 @@ services:
     init: true
     restart: "no"
 
+  experiments:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-trading-lab:phase-4
+    profiles: [experiments]
+    command: ["python", "-m", "ai_trading_lab", "status"]
+    environment:
+      ATL_MODE: BACKTEST
+      ATL_LOG_LEVEL: INFO
+      TZ: UTC
+    network_mode: none
+    volumes:
+      - research-artifacts:/artifacts
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    user: "10001:10001"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    restart: "no"
+
 volumes:
   market-data:
+  research-artifacts:

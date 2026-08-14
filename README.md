@@ -2,10 +2,10 @@
 
 Greenfield, research-first platform for testing whether a systematic trading edge exists.
 
-The project has completed **PHASE 3 — Backtesting Engine**. It contains the PHASE 2 credential-free
-Bybit data engine plus framework-neutral order/result contracts, a conservative deterministic T1
-bar-event reference kernel and immutable backtest artifacts. It has no alpha strategies, exchange
-credentials, paper adapter or live execution path.
+The project has completed **PHASE 4 — Analytics and Experiment Tracking**. It contains the PHASE 2
+credential-free Bybit data engine, the PHASE 3 deterministic T1 reference backtester, frozen
+performance metrics, monotonic `EXP-*` registration and immutable JSON/Parquet/Markdown evidence.
+It has no alpha strategies, exchange credentials, paper adapter or live execution path.
 
 ## Safety boundary
 
@@ -38,6 +38,7 @@ uv run mypy
 uv run bandit -q -r src
 uv run pip-audit
 uv run atl backtest self-test
+uv run atl experiment self-test
 ```
 
 Public data examples:
@@ -83,3 +84,6 @@ The data contract, layout and integrity gates are documented in
 The exact execution model and limitations are documented in
 [`docs/BACKTESTING.md`](docs/BACKTESTING.md). The 2026 NautilusTrader capability decision is in
 [`docs/PHASE_3_NAUTILUS_CAPABILITY_GATE.md`](docs/PHASE_3_NAUTILUS_CAPABILITY_GATE.md).
+
+Metric definitions, verdict rules and experiment artifacts are documented in
+[`docs/ANALYTICS.md`](docs/ANALYTICS.md).

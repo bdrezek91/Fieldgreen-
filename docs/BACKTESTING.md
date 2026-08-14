@@ -111,8 +111,10 @@ The JSON outputs must be identical. CI repeats the same test inside a network-di
 - immutable dataset and assumptions identity;
 - no strategy optimization and no alpha code in PHASE 3.
 
-Survivorship control, train/validation/test orchestration, purging/embargo, walk-forward assembly,
-multiple-testing corrections, Monte Carlo and performance metrics belong to later phases.
+PHASE 4 now derives versioned performance metrics from the canonical result. Survivorship control,
+train/validation/test orchestration, purging/embargo, walk-forward assembly, multiple-testing
+corrections and Monte Carlo belong to later phases. Definitions are frozen in
+[`ANALYTICS.md`](ANALYTICS.md).
 
 ## Known limitations
 

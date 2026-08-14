@@ -14,8 +14,8 @@ WORKDIR /app
 
 RUN groupadd --gid 10001 atl \
     && useradd --uid 10001 --gid atl --no-create-home --shell /usr/sbin/nologin atl \
-    && mkdir /data \
-    && chown atl:atl /data
+    && mkdir /data /artifacts \
+    && chown atl:atl /data /artifacts
 
 COPY pyproject.toml uv.lock README.md /app/
 RUN uv sync --frozen --no-dev --no-install-project
