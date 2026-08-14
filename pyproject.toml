@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-trading-lab"
+version = "0.1.0"
+description = "Research-first platform for reproducible systematic trading experiments."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+authors = [{ name = "AI Trading Lab contributors" }]
+dependencies = []
+
+[project.scripts]
+atl = "ai_trading_lab.cli:main"
+
+[dependency-groups]
+dev = [
+  "bandit>=1.8,<2",
+  "mypy>=1.17,<2",
+  "pip-audit>=2.9,<3",
+  "pre-commit>=4.3,<5",
+  "pytest>=9.0.3,<10",
+  "pytest-cov>=6.2,<7",
+  "ruff>=0.12,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_trading_lab"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers --cov=ai_trading_lab --cov-report=term-missing --cov-fail-under=95"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "RUF", "SIM", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["ai_trading_lab"]
+mypy_path = "src"
+warn_unreachable = true
+
+[tool.coverage.run]
+branch = true
+source = ["ai_trading_lab"]
+omit = ["src/ai_trading_lab/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
