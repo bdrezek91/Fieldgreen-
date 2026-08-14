@@ -1,6 +1,6 @@
 # VPS Deployment
 
-Status: PHASE 4 data, offline-backtest and experiment-evidence baseline.
+Status: PHASE 5 data, offline-backtest, experiment-evidence and benchmark baseline.
 
 Target: Linux VPS with Git, Docker Engine and the Docker Compose plugin.
 
@@ -44,9 +44,9 @@ after the first build on a Docker-enabled host and pinned before any paper-tradi
 Verify the offline engine twice; both JSON documents must be identical:
 
 ```bash
-docker run --rm --network none ai-trading-lab:phase-4 \
+docker run --rm --network none ai-trading-lab:phase-5 \
   python -m ai_trading_lab backtest self-test
-docker run --rm --network none ai-trading-lab:phase-4 \
+docker run --rm --network none ai-trading-lab:phase-5 \
   python -m ai_trading_lab backtest self-test
 ```
 
@@ -55,6 +55,13 @@ Verify the experiment registry and immutable bundle on its dedicated named volum
 ```bash
 docker compose --profile experiments run --rm experiments \
   python -m ai_trading_lab experiment self-test --root /artifacts/phase-4-smoke
+```
+
+Verify and persist the four frozen benchmark controls, including 100 Random Entry seeds:
+
+```bash
+docker compose --profile experiments run --rm experiments \
+  python -m ai_trading_lab benchmark self-test --root /artifacts/phase-5-smoke
 ```
 
 The `research-artifacts` volume contains SQLite registry state, backtest JSON, metrics, trades and

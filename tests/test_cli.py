@@ -11,7 +11,7 @@ from ai_trading_lab.settings import LiveModeBlockedError, Settings
 
 def test_status_payload_is_safe() -> None:
     payload = cli.status_payload(Settings())
-    assert payload["phase"] == 4
+    assert payload["phase"] == 5
     assert payload["status"] == "healthy"
     assert payload["live_trading"] == "BLOCKED"
 
@@ -79,6 +79,27 @@ def test_experiment_self_test_writes_only_to_requested_root(
     assert payload["verdict"] == "INCONCLUSIVE"
     assert payload["live_trading"] == "BLOCKED"
     assert (tmp_path / "experiments" / "EXP-000001" / "manifest.json").is_file()
+
+
+def test_benchmark_self_test_records_distribution(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "benchmark_smoke_payload",
+        lambda root: {
+            "status": "PASS",
+            "root": str(root),
+            "experiments_recorded": 103,
+            "live_trading": "BLOCKED",
+        },
+    )
+    assert cli.main(["benchmark", "self-test", "--root", str(tmp_path)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["experiments_recorded"] == 103
+    assert payload["root"] == str(tmp_path)
 
 
 def test_unhandled_command_is_defensive(monkeypatch: pytest.MonkeyPatch) -> None:

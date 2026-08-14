@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ai_trading_lab.backtesting.scenarios import reference_smoke_payload
+from ai_trading_lab.benchmarks.scenarios import benchmark_smoke_payload
 from ai_trading_lab.data.adapters.bybit_v5 import BybitAPIError, BybitV5PublicClient
 from ai_trading_lab.data.contracts import INITIAL_SYMBOLS, Timeframe
 from ai_trading_lab.data.pipeline import DataIngestionService, IngestionResult
@@ -51,6 +52,12 @@ def build_parser() -> argparse.ArgumentParser:
         "self-test", help="verify analytics and experiment persistence"
     )
     experiment_smoke.add_argument("--root", help="artifact root; defaults to a temporary directory")
+    benchmark = subparsers.add_parser("benchmark", help="run frozen PHASE 5 controls")
+    benchmark_commands = benchmark.add_subparsers(dest="benchmark_command", required=True)
+    benchmark_smoke = benchmark_commands.add_parser(
+        "self-test", help="run and record the offline synthetic benchmark suite"
+    )
+    benchmark_smoke.add_argument("--root", help="artifact root; defaults to a temporary directory")
     return parser
 
 
@@ -58,7 +65,7 @@ def status_payload(settings: Settings) -> dict[str, object]:
     """Build the public health/status payload."""
     return {
         "service": "ai-trading-lab",
-        "phase": 4,
+        "phase": 5,
         "status": "healthy",
         **settings.public_status(),
     }
@@ -106,6 +113,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     _print_payload(experiment_smoke_payload(Path(directory)))
             return 0
         raise AssertionError(f"Unhandled experiment command: {args.experiment_command}")
+    if args.command == "benchmark":
+        if args.benchmark_command == "self-test":
+            if args.root:
+                _print_payload(benchmark_smoke_payload(Path(args.root)))
+            else:
+                with tempfile.TemporaryDirectory(prefix="atl-phase-5-") as directory:
+                    _print_payload(benchmark_smoke_payload(Path(directory)))
+            return 0
+        raise AssertionError(f"Unhandled benchmark command: {args.benchmark_command}")
     if args.command == "data":
         lake = DataLake(settings.data_root)
         service = DataIngestionService(BybitV5PublicClient(raw_page_sink=lake.write_raw_page), lake)

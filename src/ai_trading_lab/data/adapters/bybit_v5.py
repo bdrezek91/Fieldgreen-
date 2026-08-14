@@ -65,7 +65,7 @@ class UrlLibPublicTransport:
         query = urllib.parse.urlencode(parameters)
         request = urllib.request.Request(
             f"{self.base_url}{endpoint}?{query}" if query else f"{self.base_url}{endpoint}",
-            headers={"Accept": "application/json", "User-Agent": "ai-trading-lab/0.4.0"},
+            headers={"Accept": "application/json", "User-Agent": "ai-trading-lab/0.5.0"},
             method="GET",
         )
         last_error: Exception | None = None

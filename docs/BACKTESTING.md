@@ -1,6 +1,7 @@
 # Backtesting
 
-Status: PHASE 3 reference engine implemented. No alpha strategy exists.
+Status: PHASE 5 reference engine and benchmark controls implemented. No candidate alpha strategy
+exists.
 
 ## Purpose and fidelity
 
@@ -115,6 +116,10 @@ PHASE 4 now derives versioned performance metrics from the canonical result. Sur
 train/validation/test orchestration, purging/embargo, walk-forward assembly, multiple-testing
 corrections and Monte Carlo belong to later phases. Definitions are frozen in
 [`ANALYTICS.md`](ANALYTICS.md).
+
+PHASE 5 benchmark targets are compiled separately and execute under these same semantics. The
+compiler rejects insufficient next-bar volume rather than accepting unequal partial-fill exposure.
+Exact fixed rules and caveats are in [`BENCHMARKS.md`](BENCHMARKS.md).
 
 ## Known limitations
 

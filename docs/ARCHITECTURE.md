@@ -3,7 +3,7 @@
 The accepted PHASE 0 design is defined in
 [`PHASE_0_ARCHITECTURE_RESEARCH.md`](PHASE_0_ARCHITECTURE_RESEARCH.md). PHASE 3 added the first
 framework-neutral backtesting boundary. PHASE 4 implements canonical analytics and experiment
-evidence without changing the modular direction.
+evidence. PHASE 5 adds framework-neutral control signals and a separate signal-to-order compiler.
 
 ```mermaid
 flowchart TD
@@ -16,9 +16,9 @@ flowchart TD
     A --> X["Analytics / experiments"]
 ```
 
-Data, the T1 backtest boundary, canonical analytics and experiment tracking are implemented.
-Features, signals, strategies, risk and ML remain future modules; the diagram describes dependency
-direction as well as the eventual system.
+Data, the T1 backtest boundary, control signals, canonical analytics and experiment tracking are
+implemented. Feature research, candidate strategies, the full risk engine and ML remain future
+modules; the diagram describes dependency direction as well as the eventual system.
 
 ## Implemented packages
 
@@ -36,6 +36,9 @@ direction as well as the eventual system.
 | `backtesting.scenarios` | synthetic non-strategy runtime proof |
 | `analytics.contracts` / `metrics` | closed trades and versioned portfolio statistics |
 | `experiments.contracts` / `store` | monotonic IDs, SQLite lifecycle and immutable evidence |
+| `benchmarks.contracts` / `strategies` | owned targets and four frozen comparison controls |
+| `benchmarks.compiler` | timing, sizing and full-fill gate from targets to order intents |
+| `benchmarks.runner` / `scenarios` | shared execution, 100-seed distribution and offline proof |
 | `serialization` | canonical JSON, hashing and atomic write-once support |
 
 ## Dependency rules

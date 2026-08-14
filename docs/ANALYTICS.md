@@ -1,6 +1,7 @@
 # Analytics and experiment tracking
 
-Status: PHASE 4 implementation complete. No benchmark or alpha strategy exists.
+Status: PHASE 4 implementation complete. PHASE 5 controls consume this contract; no candidate
+alpha strategy exists.
 
 ## Evidence flow
 
@@ -109,6 +110,6 @@ smoke run is always `INCONCLUSIVE` because it tests infrastructure, not a tradin
 
 ## Phase boundary
 
-PHASE 4 does not add benchmarks, parameter search, Monte Carlo, walk-forward, regimes, strategies
-or ML. Those later stages will consume this evidence contract rather than redefine metrics after
-seeing results.
+PHASE 4 itself added no benchmarks, parameter search, Monte Carlo, walk-forward, regimes,
+strategies or ML. PHASE 5 adds only the frozen controls in [`BENCHMARKS.md`](BENCHMARKS.md).
+Later stages consume this evidence contract rather than redefine metrics after seeing results.
