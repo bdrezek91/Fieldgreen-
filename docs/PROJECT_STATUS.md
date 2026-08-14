@@ -84,8 +84,8 @@ Proposed PHASE 5 scope:
 
 ## KNOWN ISSUES
 
-- Docker/Podman is unavailable in the local managed runner; final PHASE 4 image and volume behavior
-  require GitHub Actions validation after publication.
+- Docker/Podman is unavailable in the local managed runner. GitHub Actions run `31774359748`
+  successfully validated the PHASE 4 image, Compose and writable named artifact volume.
 - Python and uv image references are version-pinned but not content-digest-pinned.
 - Public Bybit connectivity still requires proof from GitHub/VPS before historical backfill.
 - SQLite is intentionally single-VPS infrastructure; multi-host workers will require PostgreSQL.
@@ -131,7 +131,10 @@ PHASE 4 validation at the time of this status update:
 - YAML parsing for Compose, CI and pre-commit: PASS;
 - LIVE fail-closed tests: PASS;
 - local secret-pattern review: PASS;
-- Docker Compose, PHASE 4 image, artifact-volume permissions and Gitleaks: pending GitHub Actions;
+- Docker Compose and PHASE 4 image build: PASS in GitHub Actions run `31774359748`;
+- network-disabled experiment bundle on the named artifact volume: PASS in run `31774359748`;
+- container-level LIVE fail-closed check: PASS in GitHub Actions run `31774359748`;
+- Gitleaks: PASS in GitHub Actions run `31774359748`;
 - credentials or private API fields added: NO (correct);
 - benchmark or alpha strategies added: NO (correct);
 - PHASE 5 started: NO (correct).
