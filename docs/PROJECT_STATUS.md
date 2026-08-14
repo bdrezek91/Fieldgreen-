@@ -70,8 +70,8 @@ against synthetic smoke evidence or begin walk-forward, regimes or ML early.
 
 ## KNOWN ISSUES
 
-- Docker/Podman is unavailable in the local managed runner. PHASE 5 container validation is pending
-  GitHub Actions; PHASE 4 was last proven by run `31774359748`.
+- Docker/Podman is unavailable in the local managed runner. GitHub Actions run `31775416830`
+  validated the PHASE 5 image, Compose, benchmark volume and LIVE block.
 - Python and uv images are version-pinned but not content-digest-pinned.
 - Public Bybit connectivity still needs proof from GitHub/VPS before historical backfill.
 - No curated historical benchmark matrix or historical funding ingestion exists; PHASE 5 therefore
@@ -118,9 +118,11 @@ PHASE 5 local validation at this status update:
 - YAML parsing for Compose, CI and pre-commit: PASS;
 - LIVE fail-closed tests: PASS;
 - local secret-pattern review: PASS;
-- Docker Compose and PHASE 5 image build: PENDING GitHub Actions;
-- network-disabled benchmark suite on named artifact volume: PENDING GitHub Actions;
-- container LIVE fail-closed and Gitleaks: PENDING GitHub Actions;
+- Docker Compose and PHASE 5 image build: PASS in GitHub Actions run `31775416830`;
+- network-disabled 103-experiment suite on named volume: PASS in run `31775416830`;
+- container LIVE fail-closed and Gitleaks: PASS in run `31775416830`;
+- initial CI run `31775337034`: FAILED because the large `uv.lock` blob was truncated during
+  publication; complete blob hash was restored and the succeeding run passed;
 - credentials or private API fields added: NO (correct);
 - candidate alpha strategies added: NO (correct);
 - PHASE 6 started: NO (correct).
