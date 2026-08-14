@@ -1,17 +1,22 @@
 # PROJECT STATUS
 
 **Project:** `ai-trading-lab`
+
 **Repository:** `bdrezek91/Fieldgreen-`
+
 **Updated:** 2026-08-14 UTC
+
 **Mode:** GREENFIELD — independent from every previous trading project
+
 **Allowed modes:** RESEARCH / BACKTEST / PAPER
+
 **LIVE:** HARD-BLOCKED; out of scope until PHASE 15
 
 ## CURRENT PHASE
 
-**PHASE 2 — Data engine: IMPLEMENTATION COMPLETE**
+**PHASE 3 — Backtesting engine: IMPLEMENTATION COMPLETE**
 
-Work is stopped at the phase boundary. PHASE 3 has not started and requires a new explicit user
+Work is stopped at the phase boundary. PHASE 4 has not started and requires a new explicit user
 instruction.
 
 ## DONE
@@ -19,105 +24,111 @@ instruction.
 ### PHASE 0
 
 - Researched the 2026 technology landscape and selected an owned modular Python platform.
-- Chose official Bybit V5 as the initial source of truth, Parquet/DuckDB for analytical data and
-  replaceable NautilusTrader/VectorBT adapters at later capability gates.
+- Chose official Bybit V5 as the initial data source, Parquet/DuckDB for analytics and replaceable
+  engine adapters behind project-owned contracts.
 
 ### PHASE 1
 
 - Created the package, dependency lock, fail-closed settings, hardened Docker/Compose baseline,
   CI, tests and core documentation.
-- Published the project to `bdrezek91/Fieldgreen-`; the first remote CI run passed.
+- Published the greenfield repository to `bdrezek91/Fieldgreen-`.
 
 ### PHASE 2
 
-- Verified current official Bybit V5 kline, instrument, server-time and rate-limit contracts.
-- Added provider-independent `Candle`, `Instrument` and `Timeframe` contracts.
-- Added the required initial 11-symbol universe and six timeframes.
-- Implemented a credential-free official Bybit V5 adapter with strict parsing, instrument cursor
-  pagination, backward kline pagination, identity checks, universe-completeness checks, bounded
-  HTTPS retries, a pre-normalization raw-page sink and server-time-based incomplete-candle removal.
-- Implemented immutable raw, normalized, curated and quarantine zones.
-- Added canonical gzip JSON evidence and Parquet/Zstandard analytical storage.
-- Added UTC millisecond timestamps and exact `decimal128(38,18)` numeric storage.
-- Added Hive-style partitioning by timeframe, symbol, year and month.
-- Added atomic writes, SHA-256 hashes, content-derived `DS-*` versions and lineage manifests.
-- Added validation for empty data, mixed series, UTC, alignment, duplicates, ordering, gaps,
-  continuity, incomplete candles, OHLC, negative activity, zero volume and price anomalies.
-- Added deterministic complete-bucket resampling and field-level native parity checks.
-- Added safe CLI commands and a dedicated one-shot Compose data service with persistent volume.
-- Updated README, architecture, data, backtesting and VPS documentation.
+- Implemented credential-free official Bybit V5 public ingestion, strict domain contracts,
+  UTC/exact-decimal normalization, raw evidence, immutable Parquet zones, quarantine, integrity
+  reports, dataset lineage/versioning and deterministic resampling.
+- Added the initial 11-symbol universe and six required timeframes without adding API keys.
+
+### PHASE 3
+
+- Re-checked the official NautilusTrader release state and documentation on 2026-08-14.
+- Ran an isolated `2.0.0rc2` capability spike without adding it to production dependencies.
+- Deferred Nautilus adoption because stable v2 was unavailable and native bar callbacks do not
+  guarantee the required next-bar-open execution rule.
+- Added owned, framework-neutral contracts for order intents, assumptions, funding/mark events,
+  fills, ledger events, positions, equity and canonical results.
+- Added a deterministic T1 bar-event reference kernel supporting long/short, position flips,
+  market/limit/stop-market, GTC/IOC, reduce-only, OCO, partial fills, latency and multi-symbol order.
+- Added explicit maker/taker fees, spread, slippage, tick/quantity precision, minimum notional,
+  leverage/margin checks, funding and an intentionally approximate liquidation model.
+- Enforced close-to-next-open execution and conservative same-bar stop/target resolution.
+- Added immutable canonical JSON backtest artifacts with overwrite protection.
+- Added a deterministic synthetic `atl backtest self-test` and container parity check.
+- Added capability-gate, architecture, backtesting, VPS and README documentation.
+- Added no strategy, feature, alpha optimization, ML, private exchange or execution adapter.
 
 ## IN PROGRESS
 
-None. Work is intentionally stopped after PHASE 2.
+None. Work is intentionally stopped after PHASE 3.
 
 ## NEXT
 
-On explicit instruction only: **PHASE 3 — Backtesting engine capability gate and implementation**.
+On explicit instruction only: **PHASE 4 — Analytics and experiment tracking**.
 
-Proposed PHASE 3 scope:
+Proposed PHASE 4 scope:
 
-- freeze execution semantics and event ordering before adding strategies;
-- run a NautilusTrader version/capability spike against owned data contracts;
-- verify fees, spread, slippage, leverage, funding, stops, liquidation approximations and
-  multi-asset portfolio behavior;
-- define order, fill, position and portfolio contracts independent of NautilusTrader;
-- implement deterministic backtest configuration and result artifacts;
-- add lookahead, same-bar ambiguity and close-fill prohibition tests;
-- do not create alpha strategies yet.
+- allocate monotonic `EXP-000001` experiment IDs safely;
+- persist the complete reproducibility envelope: Git commit, dataset/engine/assumptions versions,
+  date range, symbols, timeframes, parameters and timestamps;
+- derive trade records and the required performance/risk/cost metrics from the canonical ledger;
+- create machine-readable JSON/Parquet evidence and a human-readable report;
+- distinguish `REJECTED`, `INCONCLUSIVE` and passed research outcomes;
+- keep benchmark strategies, parameter search, Monte Carlo and walk-forward out until their
+  assigned phases.
 
 ## KNOWN ISSUES
 
-- Docker/Podman is unavailable in the current local execution environment. GitHub Actions run
-  `31770857885` successfully validated Compose, the PHASE 2 image build, PyArrow import inside the
-  image and the container-level LIVE block.
+- Docker/Podman is unavailable in the local managed runner; GitHub Actions is the authoritative
+  Compose/image/runtime validation path.
 - The Python and uv image references are version-pinned but not content-digest-pinned.
-- A public API smoke test from the local managed runner was blocked by its network gateway, which
-  returned a non-JSON response. Mocked official-contract tests pass; connectivity must be proven by
-  an explicit public-data command on GitHub/VPS before historical backfill.
-- No raw-data retention, backup or disk-budget policy is selected for the VPS.
-- Incremental scheduling, late-arriving data reconciliation and recovery checkpoints are not yet
-  implemented.
-- Funding, open interest, mark/index prices, trades, liquidations and order books are designed as
-  extensions but are not ingested in PHASE 2.
-- The engine intentionally does not auto-fill missing candles. Gapped batches are quarantined.
-- DuckDB is selected architecturally but is not needed or installed until a query/catalog consumer
-  is implemented.
+- Public Bybit connectivity was blocked by the managed runner gateway in PHASE 2 and remains to be
+  proven from GitHub/VPS before backfill.
+- The T1 OHLC kernel cannot know the real intrabar path, spread history, queue position or depth.
+- Bar participation is a deterministic cap, not a probabilistic fill or market-impact model.
+- Funding and mark contracts exist, but their historical ingestion is not implemented.
+- Margin and liquidation are simplified. Any leveraged result is not paper-eligible.
+- Bybit risk tiers, cross margin, bankruptcy price and insurance-fund mechanics are not modeled.
+- T0 vectorized screening, stable Nautilus adapter and T2 trade/order-book replay are deferred.
+- Experiment indexing and analytical performance metrics do not exist until PHASE 4.
+- Raw retention, backup, disk budget and incremental data scheduling remain undecided.
 
 ## RESEARCH QUESTIONS
 
-1. What raw-response retention period and disk budget should be used on the VPS?
-2. What is the earliest desired history, per instrument launch date?
-3. Should canonical higher timeframes be derived only from native 1m, with native HTF retained
-   solely for parity checks?
-4. What parity tolerances should be allowed for volume and turnover after provider corrections?
-5. Should incremental ingestion run every minute, every five minutes, or by WebSocket plus REST
-   reconciliation in a later operations phase?
-6. Which stable NautilusTrader v2 release passes the PHASE 3 capability gate?
+1. Which future stable NautilusTrader v2 release can pass golden parity against the reference
+   kernel and preserve explicit next-bar scheduling?
+2. Which historical Bybit risk-tier snapshots are obtainable for exact liquidation research?
+3. What bar-participation and slippage assumptions are defensible before trade-level calibration?
+4. Should experiment state begin with SQLite on a single VPS while bulk evidence stays Parquet?
+5. What raw-response retention period, experiment retention policy and disk budget fit the VPS?
+6. Which metric definitions and annualization rules should be frozen before benchmark comparisons?
 
 ## PHASE GATE
 
-PHASE 2 validation at the time of this status update:
+PHASE 3 validation at the time of this status update:
 
-- dependency lock with PyArrow 23.0.1: PASS;
+- dependency lock and package version `0.3.0`: PASS;
 - Ruff lint and format: PASS;
 - strict mypy: PASS;
-- pytest: 60 PASS;
-- statement and branch coverage: 95.59%;
-- required data-integrity tests: PASS;
-- adapter contract and pagination tests: PASS;
-- storage, manifest, quarantine and idempotency tests: PASS;
-- resampling and parity tests: PASS;
+- pytest: 105 PASS;
+- statement and branch coverage: above required 95%;
+- no-same-close and future-prefix invariance tests: PASS;
+- fee, funding-sign, spread/slippage and precision tests: PASS;
+- long/short, flips, reduce-only and margin tests: PASS;
+- partial-fill, IOC/GTC and latency tests: PASS;
+- conservative same-bar OCO test: PASS;
+- approximate long/short liquidation tests: PASS;
+- deterministic multi-symbol and repeated-run tests: PASS;
+- immutable artifact and overwrite-protection tests: PASS;
+- deterministic CLI smoke repeated locally: PASS;
 - Bandit: PASS;
-- dependency audit: PASS, no known vulnerabilities after replacing vulnerable PyArrow 21.0.0;
+- dependency audit: PASS;
 - YAML parsing for Compose, CI and pre-commit: PASS;
 - LIVE fail-closed tests: PASS;
-- Docker Compose config and PHASE 2 image build: PASS in GitHub Actions;
-- container runtime dependency import: PASS in GitHub Actions;
-- Gitleaks: PASS in GitHub Actions;
+- Docker Compose config and PHASE 3 image build: pending final GitHub Actions validation;
+- network-disabled container self-test equality: pending final GitHub Actions validation;
+- Gitleaks: pending final GitHub Actions validation;
 - local secret-pattern review: PASS;
-- public Bybit smoke test: NOT RUN TO COMPLETION — managed network gateway returned non-JSON;
-- local Docker build/Compose lifecycle: NOT RUN — runtime unavailable; remote CI equivalent PASS;
 - credentials or private API fields added: NO (correct);
-- strategies/backtester/execution added: NO (correct);
-- PHASE 3 started: NO (correct).
+- strategies, features, ML or paper/live execution added: NO (correct);
+- PHASE 4 started: NO (correct).

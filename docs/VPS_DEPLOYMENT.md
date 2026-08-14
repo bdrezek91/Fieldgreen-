@@ -1,6 +1,6 @@
 # VPS Deployment
 
-Status: PHASE 2 data-engine baseline.
+Status: PHASE 3 data and offline-backtest baseline.
 
 Target: Linux VPS with Git, Docker Engine and the Docker Compose plugin.
 
@@ -40,3 +40,16 @@ environment. Scheduled incremental collection and backup policy are deferred.
 
 The base image is version-pinned to Python 3.12.14 slim-bookworm. A digest must be recorded
 after the first build on a Docker-enabled host and pinned before any paper-trading deployment.
+
+Verify the offline engine twice; both JSON documents must be identical:
+
+```bash
+docker run --rm --network none ai-trading-lab:phase-3 \
+  python -m ai_trading_lab backtest self-test
+docker run --rm --network none ai-trading-lab:phase-3 \
+  python -m ai_trading_lab backtest self-test
+```
+
+Real backtest artifacts will be stored on a dedicated experiment volume in PHASE 4. Do not write
+them into the cloned repository. There is still no exchange execution process, private endpoint or
+API-key configuration in this phase.

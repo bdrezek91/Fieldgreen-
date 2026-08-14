@@ -11,7 +11,7 @@ from ai_trading_lab.settings import LiveModeBlockedError, Settings
 
 def test_status_payload_is_safe() -> None:
     payload = cli.status_payload(Settings())
-    assert payload["phase"] == 2
+    assert payload["phase"] == 3
     assert payload["status"] == "healthy"
     assert payload["live_trading"] == "BLOCKED"
 
@@ -57,6 +57,16 @@ def test_service_starts_and_stops(
 def test_service_command_dispatches(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "run_service", lambda _settings: 17)
     assert cli.main(["service"]) == 17
+
+
+def test_backtest_self_test_is_deterministic(capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["backtest", "self-test"]) == 0
+    first = json.loads(capsys.readouterr().out)
+    assert cli.main(["backtest", "self-test"]) == 0
+    second = json.loads(capsys.readouterr().out)
+    assert first == second
+    assert first["status"] == "PASS"
+    assert first["live_trading"] == "BLOCKED"
 
 
 def test_unhandled_command_is_defensive(monkeypatch: pytest.MonkeyPatch) -> None:

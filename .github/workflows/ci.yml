@@ -46,14 +46,18 @@ jobs:
       - uses: actions/checkout@v6
       - run: docker compose config --quiet
       - run: docker compose build
-      - name: Verify PHASE 2 runtime dependencies
+      - name: Verify PHASE 3 runtime and deterministic backtester
         run: |
-          docker run --rm --network none ai-trading-lab:phase-2 \
-            python -c "import pyarrow; import ai_trading_lab.data.storage"
+          first="$(docker run --rm --network none ai-trading-lab:phase-3 \
+            python -m ai_trading_lab backtest self-test)"
+          second="$(docker run --rm --network none ai-trading-lab:phase-3 \
+            python -m ai_trading_lab backtest self-test)"
+          test "$first" = "$second"
+          echo "$first" | grep '"status": "PASS"'
       - name: Prove LIVE fails closed in the image
         run: |
           if docker run --rm --network none -e ATL_MODE=LIVE \
-            ai-trading-lab:phase-2 python -m ai_trading_lab status; then
+            ai-trading-lab:phase-3 python -m ai_trading_lab status; then
             echo "LIVE mode unexpectedly started"
             exit 1
           fi

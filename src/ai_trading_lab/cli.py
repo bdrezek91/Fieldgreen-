@@ -10,6 +10,7 @@ import threading
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from ai_trading_lab.backtesting.scenarios import reference_smoke_payload
 from ai_trading_lab.data.adapters.bybit_v5 import BybitAPIError, BybitV5PublicClient
 from ai_trading_lab.data.contracts import INITIAL_SYMBOLS, Timeframe
 from ai_trading_lab.data.pipeline import DataIngestionService, IngestionResult
@@ -38,6 +39,9 @@ def build_parser() -> argparse.ArgumentParser:
     candles.add_argument("--timeframe", required=True, choices=[item.value for item in Timeframe])
     candles.add_argument("--start", required=True, help="inclusive ISO-8601 UTC timestamp")
     candles.add_argument("--end", required=True, help="exclusive ISO-8601 UTC timestamp")
+    backtest = subparsers.add_parser("backtest", help="run safe backtesting utilities")
+    backtest_commands = backtest.add_subparsers(dest="backtest_command", required=True)
+    backtest_commands.add_parser("self-test", help="run the deterministic synthetic kernel check")
     return parser
 
 
@@ -45,7 +49,7 @@ def status_payload(settings: Settings) -> dict[str, object]:
     """Build the public health/status payload."""
     return {
         "service": "ai-trading-lab",
-        "phase": 2,
+        "phase": 3,
         "status": "healthy",
         **settings.public_status(),
     }
@@ -79,6 +83,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "service":
         return run_service(settings)
+    if args.command == "backtest":
+        if args.backtest_command == "self-test":
+            _print_payload(reference_smoke_payload())
+            return 0
+        raise AssertionError(f"Unhandled backtest command: {args.backtest_command}")
     if args.command == "data":
         lake = DataLake(settings.data_root)
         service = DataIngestionService(BybitV5PublicClient(raw_page_sink=lake.write_raw_page), lake)
