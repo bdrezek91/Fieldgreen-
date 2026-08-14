@@ -114,7 +114,8 @@ PHASE 6 gate-readiness validation at this status update:
 - synthetic 104-experiment integration: PASS, decision `INCONCLUSIVE`, TEST `SEALED`;
 - LIVE fail-closed and local secret-pattern review: PASS;
 - local missing-matrix fail-closed test: PASS with exit code 3, `INCONCLUSIVE` and TEST `SEALED`;
-- local Docker is unavailable; Compose, image and Gitleaks remain pending GitHub Actions;
+- local Docker is unavailable; GitHub Actions CI run #13 passed quality, Compose/image,
+  deterministic runtime guardrails, missing-matrix fail-closed, LIVE fail-closed and Gitleaks;
 - credentials, private API fields, paper/live execution added: NO (correct);
 - real-market edge claimed: NO (correct);
 - real Bybit backfill completed: NO — network blocker recorded, no fabrication;
