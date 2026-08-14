@@ -18,7 +18,7 @@ coverage.xml
 htmlcov/
 
 # Research and market data (never commit)
-data/
+/data/
 artifacts/
 models/
 mlruns/

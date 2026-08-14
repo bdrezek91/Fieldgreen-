@@ -1,6 +1,7 @@
 """Tests for the non-trading command-line surface."""
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -10,7 +11,7 @@ from ai_trading_lab.settings import LiveModeBlockedError, Settings
 
 def test_status_payload_is_safe() -> None:
     payload = cli.status_payload(Settings())
-    assert payload["phase"] == 1
+    assert payload["phase"] == 2
     assert payload["status"] == "healthy"
     assert payload["live_trading"] == "BLOCKED"
 
@@ -69,3 +70,82 @@ def test_unhandled_command_is_defensive(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(cli, "build_parser", lambda: Parser())
     with pytest.raises(AssertionError, match="Unhandled command"):
         cli.main([])
+
+
+def test_cli_timestamp_and_symbol_validation() -> None:
+    assert cli._utc_timestamp("2026-01-01T00:00:00Z").isoformat().endswith("+00:00")
+    assert cli._symbols(" btcusdt,ETHUSDT,btcusdt ") == ("BTCUSDT", "ETHUSDT")
+    with pytest.raises(ValueError, match="explicit UTC"):
+        cli._utc_timestamp("2026-01-01T00:00:00")
+    with pytest.raises(ValueError, match="expressed in UTC"):
+        cli._utc_timestamp("2026-01-01T01:00:00+01:00")
+    with pytest.raises(ValueError, match="symbols"):
+        cli._symbols("bad symbol")
+
+
+def test_data_commands_dispatch_without_real_network(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    class Result:
+        dataset_version = "DS-TEST"
+        status = "CURATED"
+        row_count = 2
+        validation_errors = 0
+        validation_warnings = 0
+        manifest_path = tmp_path / "manifest.json"
+
+    class Service:
+        def __init__(self, *_args: object) -> None:
+            pass
+
+        def ingest_instruments(self, symbols: frozenset[str]) -> Result:
+            assert symbols == frozenset({"BTCUSDT"})
+            return Result()
+
+        def ingest_candles(self, *args: object, **kwargs: object) -> Result:
+            assert args[:2] == ("BTCUSDT", cli.Timeframe.ONE_MINUTE)
+            assert kwargs["start"].tzinfo is not None
+            return Result()
+
+    monkeypatch.setattr(cli, "DataIngestionService", Service)
+    assert cli.main(["data", "instruments", "--symbols", "BTCUSDT"]) == 0
+    assert json.loads(capsys.readouterr().out)["dataset_version"] == "DS-TEST"
+    assert (
+        cli.main(
+            [
+                "data",
+                "candles",
+                "--symbol",
+                "BTCUSDT",
+                "--timeframe",
+                "1m",
+                "--start",
+                "2026-01-01T00:00:00Z",
+                "--end",
+                "2026-01-01T00:02:00Z",
+            ]
+        )
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["live_trading"] == "BLOCKED"
+
+
+def test_data_transport_failure_is_structured(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    class FailingService:
+        def __init__(self, *_args: object) -> None:
+            pass
+
+        def ingest_instruments(self, _symbols: frozenset[str]) -> object:
+            raise cli.BybitAPIError("public endpoint unavailable")
+
+    monkeypatch.setattr(cli, "DataIngestionService", FailingService)
+    assert cli.main(["data", "instruments", "--symbols", "BTCUSDT"]) == 2
+    payload = json.loads(capsys.readouterr().err)
+    assert payload == {
+        "error": "BybitAPIError",
+        "live_trading": "BLOCKED",
+        "message": "public endpoint unavailable",
+        "status": "FAILED",
+    }

@@ -2,8 +2,10 @@
 
 Greenfield, research-first platform for testing whether a systematic trading edge exists.
 
-The project currently contains **PHASE 1 infrastructure only**. It has no strategies, no
-market-data client, no exchange credentials and no live execution path.
+The project has completed **PHASE 2 — Data Engine**. It contains a credential-free public Bybit V5
+adapter, exact domain contracts, immutable Parquet storage, integrity validation, quarantine,
+dataset manifests and deterministic resampling. It has no strategies, backtester, exchange
+credentials or live execution path.
 
 ## Safety boundary
 
@@ -14,7 +16,8 @@ Allowed modes:
 - `PAPER`
 
 `LIVE` is intentionally absent from the mode enum. Any attempt to configure it fails closed.
-The PHASE 1 Compose service also has networking disabled.
+The long-running research service also has networking disabled. Network access is available only
+to the explicit one-shot public-data service.
 
 ## Requirements
 
@@ -36,6 +39,15 @@ uv run bandit -q -r src
 uv run pip-audit
 ```
 
+Public data examples:
+
+```bash
+ATL_DATA_ROOT=data uv run atl data instruments
+ATL_DATA_ROOT=data uv run atl data candles \
+  --symbol BTCUSDT --timeframe 1m \
+  --start 2026-08-01T00:00:00Z --end 2026-08-02T00:00:00Z
+```
+
 ## Docker
 
 ```bash
@@ -47,8 +59,13 @@ docker compose logs --no-color research
 docker compose down
 ```
 
-The current container is an infrastructure heartbeat, not a trader. It exposes no ports and
-cannot reach the network.
+The default container is a research heartbeat, not a trader. It exposes no ports and cannot reach
+the network. Public ingestion is run explicitly and writes only to the `market-data` volume:
+
+```bash
+docker compose --profile data run --rm data \
+  python -m ai_trading_lab data instruments
+```
 
 ## Project boundaries
 
@@ -58,3 +75,6 @@ Current progress is tracked in [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md
 
 Market datasets, experiment artifacts, models, databases, logs and local configuration are
 excluded from Git. No prior trading project, strategy or integration is reused.
+
+The data contract, layout and integrity gates are documented in
+[`docs/DATA.md`](docs/DATA.md).

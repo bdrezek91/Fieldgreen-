@@ -1,5 +1,7 @@
 """Safety and configuration tests."""
 
+from pathlib import Path
+
 import pytest
 
 from ai_trading_lab.settings import LiveModeBlockedError, RunMode, Settings
@@ -31,14 +33,19 @@ def test_settings_default_to_research() -> None:
 
 
 def test_settings_read_safe_environment() -> None:
-    settings = Settings.from_env({"ATL_MODE": "paper", "ATL_LOG_LEVEL": "warning"})
+    settings = Settings.from_env(
+        {"ATL_MODE": "paper", "ATL_LOG_LEVEL": "warning", "ATL_DATA_ROOT": "/market-data"}
+    )
     assert settings.mode is RunMode.PAPER
     assert settings.log_level == "WARNING"
+    assert settings.data_root == Path("/market-data")
 
 
 def test_invalid_log_level_is_rejected() -> None:
     with pytest.raises(ValueError, match="Unsupported log level"):
         Settings(log_level="verbose")
+    with pytest.raises(ValueError, match="data_root"):
+        Settings(data_root=Path(""))
 
 
 def test_public_status_contains_no_credentials() -> None:
@@ -48,5 +55,6 @@ def test_public_status_contains_no_credentials() -> None:
         "log_level": "INFO",
         "allowed_modes": ["RESEARCH", "BACKTEST", "PAPER"],
         "live_trading": "BLOCKED",
+        "data_root": "data",
     }
     assert "LIVE" not in status["allowed_modes"]

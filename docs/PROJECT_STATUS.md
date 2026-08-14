@@ -1,6 +1,7 @@
 # PROJECT STATUS
 
 **Project:** `ai-trading-lab`
+**Repository:** `bdrezek91/Fieldgreen-`
 **Updated:** 2026-08-14 UTC
 **Mode:** GREENFIELD — independent from every previous trading project
 **Allowed modes:** RESEARCH / BACKTEST / PAPER
@@ -8,130 +9,111 @@
 
 ## CURRENT PHASE
 
-**PHASE 1 — Repository and basic infrastructure: IMPLEMENTATION COMPLETE**
+**PHASE 2 — Data engine: IMPLEMENTATION COMPLETE**
 
-Project execution is paused at the phase boundary. PHASE 2 has not started and must not
-start without a new user instruction.
-
-The local environment does not provide a Docker or Podman runtime. Compose and workflow YAML
-were parsed successfully, while the actual image build and Compose runtime checks remain
-mandatory in GitHub Actions or on the target VPS.
+Work is stopped at the phase boundary. PHASE 3 has not started and requires a new explicit user
+instruction.
 
 ## DONE
 
 ### PHASE 0
 
-- Researched the 2026 technology landscape.
-- Compared Freqtrade, NautilusTrader, VectorBT/Pro, Backtrader, custom Python, CCXT/Pro,
-  official Bybit V5 and time-series ML tooling.
-- Selected an owned modular research platform with replaceable framework adapters.
-- Designed data, backtest, experiment, validation, regime, risk, portfolio, execution, ML,
-  VPS and security layers.
+- Researched the 2026 technology landscape and selected an owned modular Python platform.
+- Chose official Bybit V5 as the initial source of truth, Parquet/DuckDB for analytical data and
+  replaceable NautilusTrader/VectorBT adapters at later capability gates.
 
 ### PHASE 1
 
-- Created a new local Git repository on branch `main`.
-- Added a Python 3.12 package with a reproducible `uv.lock`.
-- Added a minimal CLI and safe infrastructure heartbeat.
-- Added fail-closed settings supporting only `RESEARCH`, `BACKTEST` and `PAPER`.
-- Explicitly blocked `LIVE` for case and whitespace variants.
-- Added a safe `.env.example` with no exchange or secret fields.
-- Added `.gitignore` rules for secrets, market data, artifacts, models, databases and logs.
-- Added a non-root, read-only Docker image definition.
-- Added a Compose service with:
-  - no network;
-  - no exposed ports;
-  - all capabilities dropped;
-  - `no-new-privileges`;
-  - read-only root filesystem;
-  - bounded temporary storage;
-  - healthcheck and restart policy.
-- Added GitHub Actions jobs for:
-  - Ruff lint and format;
-  - strict mypy;
-  - pytest with coverage;
-  - Bandit;
-  - dependency audit;
-  - Gitleaks;
-  - Compose validation and Docker build;
-  - proof that a container configured as `LIVE` fails.
-- Added pre-commit configuration for Ruff and Gitleaks.
-- Added baseline documentation:
-  - `README.md`;
-  - `docs/ARCHITECTURE.md`;
-  - `docs/RESEARCH_METHODOLOGY.md`;
-  - `docs/DATA.md`;
-  - `docs/BACKTESTING.md`;
-  - `docs/ML.md`;
-  - `docs/VPS_DEPLOYMENT.md`.
-- Resolved a dependency-audit finding by upgrading pytest from the vulnerable 8.4 line to a
-  fixed 9.x release.
+- Created the package, dependency lock, fail-closed settings, hardened Docker/Compose baseline,
+  CI, tests and core documentation.
+- Published the project to `bdrezek91/Fieldgreen-`; the first remote CI run passed.
+
+### PHASE 2
+
+- Verified current official Bybit V5 kline, instrument, server-time and rate-limit contracts.
+- Added provider-independent `Candle`, `Instrument` and `Timeframe` contracts.
+- Added the required initial 11-symbol universe and six timeframes.
+- Implemented a credential-free official Bybit V5 adapter with strict parsing, instrument cursor
+  pagination, backward kline pagination, identity checks, universe-completeness checks, bounded
+  HTTPS retries, a pre-normalization raw-page sink and server-time-based incomplete-candle removal.
+- Implemented immutable raw, normalized, curated and quarantine zones.
+- Added canonical gzip JSON evidence and Parquet/Zstandard analytical storage.
+- Added UTC millisecond timestamps and exact `decimal128(38,18)` numeric storage.
+- Added Hive-style partitioning by timeframe, symbol, year and month.
+- Added atomic writes, SHA-256 hashes, content-derived `DS-*` versions and lineage manifests.
+- Added validation for empty data, mixed series, UTC, alignment, duplicates, ordering, gaps,
+  continuity, incomplete candles, OHLC, negative activity, zero volume and price anomalies.
+- Added deterministic complete-bucket resampling and field-level native parity checks.
+- Added safe CLI commands and a dedicated one-shot Compose data service with persistent volume.
+- Updated README, architecture, data, backtesting and VPS documentation.
 
 ## IN PROGRESS
 
-None. Work is intentionally stopped after PHASE 1.
+None. Work is intentionally stopped after PHASE 2.
 
 ## NEXT
 
-On explicit instruction only: **PHASE 2 — Data engine**.
+On explicit instruction only: **PHASE 3 — Backtesting engine capability gate and implementation**.
 
-Proposed PHASE 2 scope:
+Proposed PHASE 3 scope:
 
-- define stable market-data and instrument contracts;
-- implement an official Bybit V5 public-data adapter without credentials;
-- ingest instrument metadata and closed OHLCV candles;
-- implement raw, normalized, curated and quarantine zones;
-- store versioned Parquet datasets on a local/VPS volume;
-- validate UTC, schema, duplicates, gaps, continuity, OHLC invariants, zero volume, anomalies
-  and incomplete candles;
-- create dataset manifests with hashes and transformation lineage;
-- add deterministic 1m-to-higher-timeframe resampling and parity checks;
-- add data-integrity, contract and idempotency tests;
-- keep execution, strategies, API keys and LIVE out of scope.
+- freeze execution semantics and event ordering before adding strategies;
+- run a NautilusTrader version/capability spike against owned data contracts;
+- verify fees, spread, slippage, leverage, funding, stops, liquidation approximations and
+  multi-asset portfolio behavior;
+- define order, fill, position and portfolio contracts independent of NautilusTrader;
+- implement deterministic backtest configuration and result artifacts;
+- add lookahead, same-bar ambiguity and close-fill prohibition tests;
+- do not create alpha strategies yet.
 
 ## KNOWN ISSUES
 
-- Docker/Podman is unavailable in the current execution environment, so the actual image build,
-  healthcheck and Compose lifecycle were not run locally. CI contains these checks and must pass
-  before a release or VPS deployment.
-- The Docker base image is pinned to the exact `3.12.14-slim-bookworm` tag but not yet to a full
-  content digest. Record and pin the amd64 digest on the first Docker-enabled build.
-- GitHub remote repository and branch protection are not configured yet; the local repository is
-  ready to publish after the repository owner/visibility is selected.
-- NautilusTrader is not installed; its version remains intentionally deferred to the PHASE 3
-  capability gate.
-- No dataset, PostgreSQL service or experiment registry exists yet; those belong to later phases.
+- Docker/Podman is unavailable in the current local execution environment. The PHASE 2 image,
+  Compose config, persistent volume and one-shot data command require final validation in GitHub
+  Actions after publication.
+- The Python and uv image references are version-pinned but not content-digest-pinned.
+- A public API smoke test from the local managed runner was blocked by its network gateway, which
+  returned a non-JSON response. Mocked official-contract tests pass; connectivity must be proven by
+  an explicit public-data command on GitHub/VPS before historical backfill.
+- No raw-data retention, backup or disk-budget policy is selected for the VPS.
+- Incremental scheduling, late-arriving data reconciliation and recovery checkpoints are not yet
+  implemented.
+- Funding, open interest, mark/index prices, trades, liquidations and order books are designed as
+  extensions but are not ingested in PHASE 2.
+- The engine intentionally does not auto-fill missing candles. Gapped batches are quarantined.
+- DuckDB is selected architecturally but is not needed or installed until a query/catalog consumer
+  is implemented.
 
 ## RESEARCH QUESTIONS
 
-1. Which GitHub owner and repository visibility should be used when publishing the local repo?
-2. What retention period and disk budget should PHASE 2 use for raw Bybit responses?
-3. Should initial historical ingestion start only from 1m and derive higher timeframes, while
-   storing native Bybit higher-timeframe data solely for parity checks?
-4. What initial historical date should be requested for symbols listed at different times?
-5. Which full Docker base-image digest is observed on the target linux/amd64 build host?
-6. Which stable Nautilus v2 release should enter the PHASE 3 capability gate?
+1. What raw-response retention period and disk budget should be used on the VPS?
+2. What is the earliest desired history, per instrument launch date?
+3. Should canonical higher timeframes be derived only from native 1m, with native HTF retained
+   solely for parity checks?
+4. What parity tolerances should be allowed for volume and turnover after provider corrections?
+5. Should incremental ingestion run every minute, every five minutes, or by WebSocket plus REST
+   reconciliation in a later operations phase?
+6. Which stable NautilusTrader v2 release passes the PHASE 3 capability gate?
 
 ## PHASE GATE
 
-PHASE 1 validation:
+PHASE 2 validation at the time of this status update:
 
-- Python dependency lock: PASS;
-- Ruff lint: PASS;
-- Ruff format: PASS;
+- dependency lock with PyArrow 23.0.1: PASS;
+- Ruff lint and format: PASS;
 - strict mypy: PASS;
-- pytest: 24 PASS;
-- statement and branch coverage: 100%;
+- pytest: 60 PASS;
+- statement and branch coverage: 95.59%;
+- required data-integrity tests: PASS;
+- adapter contract and pagination tests: PASS;
+- storage, manifest, quarantine and idempotency tests: PASS;
+- resampling and parity tests: PASS;
 - Bandit: PASS;
-- dependency audit: PASS, no known vulnerabilities;
-- safe CLI status: PASS;
-- LIVE fail-closed runtime check: PASS;
-- YAML parsing (Compose, CI, pre-commit): PASS;
-- `.gitignore` review: PASS;
-- local secret-pattern review: PASS;
-- documentation review: PASS;
-- Docker build/Compose lifecycle: NOT RUN — runtime unavailable; mandatory CI check present;
-- strategies created: NO (correct);
-- API keys configured: NO (correct);
-- market data downloaded: NO (correct);
-- PHASE 2 started: NO (correct).
+- dependency audit: PASS, no known vulnerabilities after replacing vulnerable PyArrow 21.0.0;
+- YAML parsing for Compose, CI and pre-commit: PASS;
+- LIVE fail-closed tests: PASS;
+- public Bybit smoke test: NOT RUN TO COMPLETION — managed network gateway returned non-JSON;
+- local Docker build/Compose lifecycle: NOT RUN — runtime unavailable;
+- credentials or private API fields added: NO (correct);
+- strategies/backtester/execution added: NO (correct);
+- PHASE 3 started: NO (correct).

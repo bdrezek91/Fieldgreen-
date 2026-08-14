@@ -6,10 +6,12 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 from typing import Final
 
 MODE_ENV: Final = "ATL_MODE"
 LOG_LEVEL_ENV: Final = "ATL_LOG_LEVEL"
+DATA_ROOT_ENV: Final = "ATL_DATA_ROOT"
 ALLOWED_LOG_LEVELS: Final = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 
 
@@ -39,10 +41,11 @@ class RunMode(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    """Minimal settings with no credentials or exchange configuration."""
+    """Pre-live settings with no credentials or private exchange configuration."""
 
     mode: RunMode = RunMode.RESEARCH
     log_level: str = "INFO"
+    data_root: Path = Path("data")
 
     def __post_init__(self) -> None:
         normalized_log_level = self.log_level.strip().upper()
@@ -50,14 +53,17 @@ class Settings:
             allowed = ", ".join(sorted(ALLOWED_LOG_LEVELS))
             raise ValueError(f"Unsupported log level {self.log_level!r}; allowed: {allowed}")
         object.__setattr__(self, "log_level", normalized_log_level)
+        if self.data_root == Path("."):
+            raise ValueError("data_root cannot be the current directory")
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
-        """Load only safe PHASE 1 settings from an environment mapping."""
+        """Load only safe pre-live settings from an environment mapping."""
         source = os.environ if environ is None else environ
         return cls(
             mode=RunMode.parse(source.get(MODE_ENV, RunMode.RESEARCH.value)),
             log_level=source.get(LOG_LEVEL_ENV, "INFO"),
+            data_root=Path(source.get(DATA_ROOT_ENV, "data")),
         )
 
     def public_status(self) -> dict[str, str | list[str]]:
@@ -67,4 +73,5 @@ class Settings:
             "log_level": self.log_level,
             "allowed_modes": [mode.value for mode in RunMode],
             "live_trading": "BLOCKED",
+            "data_root": str(self.data_root),
         }
